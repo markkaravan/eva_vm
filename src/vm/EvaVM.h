@@ -8,6 +8,7 @@
 #include <string>
 #include <vector>
 #include <array>
+#include <iostream>
 
 #include "../Logger.h"
 #include "../bytecode/OpCode.h"
@@ -19,11 +20,19 @@
 
 #define STACK_LIMIT 512
 
+#define BINARY_OP(op) \
+    do { \
+        auto op2 = AS_NUMBER(pop()); \
+        auto op1 = AS_NUMBER(pop()); \
+        push(NUMBER(op1 op op2)); \
+    } while (false)
+
+
 class EvaVM {
     public:
         EvaVM() {}
 
-        void push(EvaValue& value) {
+        void push(const EvaValue& value) {
             if ((size_t) (sp - stack.begin()) == STACK_LIMIT) {
                 DIE << "push(): Stack overflow. \n";
             }
@@ -43,11 +52,16 @@ class EvaVM {
         // 1. Parse to AST
 
         // 2. Compile to Bytecode
-        constants.push_back(NUMBER(42));
-        code = {OP_CONST, 0, OP_HALT};
+        constants.push_back(NUMBER(10));
+        constants.push_back(NUMBER(3));
+        constants.push_back(NUMBER(10));
+        code = {OP_CONST, 0, OP_CONST, 1, OP_MUL, OP_CONST, 2, OP_SUB, OP_HALT};
 
         // Set IP to beginning
         ip = &code[0];
+
+        // Initialize stack
+        sp = &stack[0];
 
         return eval();
     }
@@ -60,13 +74,32 @@ class EvaVM {
             int opcode = READ_BYTE();
             log(opcode);
             switch(opcode) {
-                case OP_HALT:
+                case OP_HALT: {
                     return pop();
-                case OP_CONST:
+                }
+                case OP_CONST: {
                     push(GET_CONST());
                     break;
-                default:
+                }
+                case OP_ADD: {
+                    BINARY_OP(+);
+                    break;
+                }
+                case OP_SUB: {
+                    BINARY_OP(-);
+                    break;
+                }
+                case OP_MUL: {
+                    BINARY_OP(*);
+                    break;
+                }
+                case OP_DIV: {
+                    BINARY_OP(/);
+                    break;
+                }
+                default: {
                     DIE << "Unknown opcode: " << std::hex << opcode;
+                }
             }
         }    
     }
