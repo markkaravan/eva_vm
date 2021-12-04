@@ -5,9 +5,12 @@
 #ifndef __EvaVM_h
 #define __EvaVM_h
 
+#include <iostream>
+#include <typeinfo>
 #include <string>
 #include <vector>
 
+#include "../Logger.h"
 #include "../bytecode/OpCode.h"
 
 #define READ_BYTE() *ip++
@@ -20,7 +23,7 @@ class EvaVM {
         // 1. Parse to AST
 
         // 2. Compile to Bytecode
-        code = {OP_HALT};
+        code = {2};
 
         // Set IP to beginning
         ip = &code[0];
@@ -33,13 +36,17 @@ class EvaVM {
      */
     void eval() {
         for(;;) {
-            switch(READ_BYTE()) {
+            int opcode = READ_BYTE();
+            log(opcode);
+            switch(opcode) {
                 case OP_HALT:
                     return;
+                default:
+                    DIE << "Unknown opcode: " << std::hex << opcode;
             }
         }    
     }
-    
+
     /**
      * Instruction Pointer
      */ 

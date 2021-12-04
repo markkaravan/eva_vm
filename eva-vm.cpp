@@ -1,3 +1,4 @@
+#include <iostream>
 #include "src/vm/EvaVM.h"
 
 int main(int argc, char const *argv[]) {
@@ -8,6 +9,8 @@ int main(int argc, char const *argv[]) {
         42
 
     )");
+
+    std::cout << "All done!\n";
 
     return 0;
 }
