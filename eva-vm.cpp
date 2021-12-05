@@ -7,7 +7,7 @@ int main(int argc, char const *argv[]) {
 
     auto result = vm.exec(R"(
 
-        (+ (* 2 (- 5 3)) 7)
+        (!= 5 2)
 
     )");
 
