@@ -12,7 +12,10 @@
 
 #include "../Logger.h"
 #include "../bytecode/OpCode.h"
+#include "../parser/EvaParser.h"
 #include "EvaValue.h"
+
+using syntax::EvaParser;
 
 #define READ_BYTE() *ip++
 
@@ -30,7 +33,8 @@
 
 class EvaVM {
     public:
-        EvaVM() {}
+        // EvaVM() : parser(std::make_unique<EvaParser>) {}
+        // const std::unique_ptr<EvaParser> parser;
 
         void push(const EvaValue& value) {
             if ((size_t) (sp - stack.begin()) == STACK_LIMIT) {
@@ -49,7 +53,12 @@ class EvaVM {
         }
 
     EvaValue exec(const std::string &program) {
+        // TODO: Instantiate with unique_ptr instead of new()
+        EvaParser* parser = new EvaParser();
+
+
         // 1. Parse to AST
+        auto ast = parser->parse(program);
 
         // 2. Compile to Bytecode
         constants.push_back(ALLOC_STRING("Hello, "));
@@ -118,6 +127,12 @@ class EvaVM {
             }
         }    
     }
+    
+    /**
+     * Parser
+     */ 
+    const std::unique_ptr<EvaParser> parser;
+
 
     /**
      * Instruction Pointer
