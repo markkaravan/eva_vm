@@ -12,6 +12,7 @@
 
 #include "../Logger.h"
 #include "../bytecode/OpCode.h"
+#include "../compiler/EvaCompiler.h"
 #include "../parser/EvaParser.h"
 #include "EvaValue.h"
 
@@ -19,7 +20,7 @@ using syntax::EvaParser;
 
 #define READ_BYTE() *ip++
 
-#define GET_CONST() constants[READ_BYTE()]
+#define GET_CONST() co->constants[READ_BYTE()]
 
 #define STACK_LIMIT 512
 
@@ -55,18 +56,20 @@ class EvaVM {
     EvaValue exec(const std::string &program) {
         // TODO: Instantiate with unique_ptr instead of new()
         EvaParser* parser = new EvaParser();
+        EvaCompiler* compiler = new EvaCompiler();
 
 
         // 1. Parse to AST
         auto ast = parser->parse(program);
 
         // 2. Compile to Bytecode
-        constants.push_back(ALLOC_STRING("Hello, "));
-        constants.push_back(ALLOC_STRING("world!"));
-        code = {OP_CONST, 0, OP_CONST, 1, OP_ADD, OP_HALT};
+        co = compiler->compile(ast);
+        // constants.push_back(ALLOC_STRING("Hello, "));
+        // constants.push_back(ALLOC_STRING("world!"));
+        // code = {OP_CONST, 0, OP_CONST, 1, OP_ADD, OP_HALT};
 
         // Set IP to beginning
-        ip = &code[0];
+        ip = &co->code[0];
 
         // Initialize stack
         sp = &stack[0];
@@ -150,14 +153,9 @@ class EvaVM {
     std::array<EvaValue, STACK_LIMIT> stack;
 
     /**
-     * Constant Pool
+     * Code object
      */ 
-    std::vector<EvaValue> constants;
-
-    /**
-     *  Bytecode
-     */
-    std::vector<uint8_t> code;
+    CodeObject* co;
 };
 
 #endif
