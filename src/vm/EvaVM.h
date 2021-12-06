@@ -100,15 +100,15 @@ class EvaVM {
 
         // 2. Compile to Bytecode
         co = compiler->compile(ast);
-        // constants.push_back(ALLOC_STRING("Hello, "));
-        // constants.push_back(ALLOC_STRING("world!"));
-        // code = {OP_CONST, 0, OP_CONST, 1, OP_ADD, OP_HALT};
 
         // Set IP to beginning
         ip = &co->code[0];
 
         // Initialize stack
         sp = &stack[0];
+
+        // Debug disassembly
+        compiler->disassembleBytecode();
 
         return eval();
     }

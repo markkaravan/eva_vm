@@ -7,6 +7,7 @@
 #include "../parser/EvaParser.h"
 #include "../vm/EvaValue.h"
 #include "../bytecode/OpCode.h"
+#include "../disassembler/EvaDisassembler.h"
 
 #define ALLOC_CONST(tester, converter, allocator, value)    \
     do {                                                    \
@@ -31,6 +32,11 @@
 class EvaCompiler {
     public:
         EvaCompiler() {}
+
+        // TODO: replace w/unique pointer
+        EvaDisassembler* disassembler = new EvaDisassembler();
+
+
 
         /**
          *  Main compile API
@@ -152,6 +158,12 @@ class EvaCompiler {
                     break;
             }
         }
+
+    /**
+     *  Disassemble all compliication units
+     */ 
+    void disassembleBytecode() { disassembler->disassemble(co); }
+
     private:
         size_t getOffset() { return  co->code.size(); }
 
