@@ -31,12 +31,8 @@
 
 class EvaCompiler {
     public:
-        EvaCompiler() {}
-
-        // TODO: replace w/unique pointer
-        EvaDisassembler* disassembler = new EvaDisassembler();
-
-
+        EvaCompiler() 
+            : disassembler(std::make_unique<EvaDisassembler>()) {}
 
         /**
          *  Main compile API
@@ -165,6 +161,8 @@ class EvaCompiler {
     void disassembleBytecode() { disassembler->disassemble(co); }
 
     private:
+        std::unique_ptr<EvaDisassembler> disassembler;
+
         size_t getOffset() { return  co->code.size(); }
 
         /**
