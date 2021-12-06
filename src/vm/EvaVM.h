@@ -70,8 +70,9 @@ using syntax::EvaParser;
 
 class EvaVM {
     public:
-        // EvaVM() : parser(std::make_unique<EvaParser>) {}
-        // const std::unique_ptr<EvaParser> parser;
+        EvaVM() 
+            :   parser(std::make_unique<EvaParser>()),
+                compiler(std::make_unique<EvaCompiler>()) {}
 
         void push(const EvaValue& value) {
             if ((size_t) (sp - stack.begin()) == STACK_LIMIT) {
@@ -90,11 +91,6 @@ class EvaVM {
         }
 
     EvaValue exec(const std::string &program) {
-        // TODO: Instantiate with unique_ptr instead of new()
-        EvaParser* parser = new EvaParser();
-        EvaCompiler* compiler = new EvaCompiler();
-
-
         // 1. Parse to AST
         auto ast = parser->parse(program);
 
@@ -203,10 +199,14 @@ class EvaVM {
     }
     
     /**
-     * Parser
-     */ 
-    const std::unique_ptr<EvaParser> parser;
+     * Parser.
+     */
+    std::unique_ptr<EvaParser> parser;
 
+    /**
+     * Compiler.
+     */
+    std::unique_ptr<EvaCompiler> compiler;
 
     /**
      * Instruction Pointer
