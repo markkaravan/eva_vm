@@ -15,6 +15,7 @@
 #include "../compiler/EvaCompiler.h"
 #include "../parser/EvaParser.h"
 #include "EvaValue.h"
+#include "Global.h"
 
 using syntax::EvaParser;
 
@@ -71,9 +72,13 @@ using syntax::EvaParser;
 class EvaVM {
     public:
         EvaVM() 
-            :   parser(std::make_unique<EvaParser>()),
-                compiler(std::make_unique<EvaCompiler>()) {}
+            :   global(std::make_shared<Global>()),
+                parser(std::make_unique<EvaParser>()),
+                compiler(std::make_unique<EvaCompiler>(global)) {
+                    setGlobalVariables();
+                }
 
+            
         void push(const EvaValue& value) {
             if ((size_t) (sp - stack.begin()) == STACK_LIMIT) {
                 DIE << "push(): Stack overflow. \n";
@@ -88,6 +93,13 @@ class EvaVM {
             }
             --sp;
             return *sp;
+        }
+
+        EvaValue peek(size_t offset = 0) {
+            if (stack.size() == 0) {
+                DIE << "pop(): empty stack. \n";
+            }
+            return *(sp - 1 - offset);
         }
 
     EvaValue exec(const std::string &program) {
@@ -115,7 +127,6 @@ class EvaVM {
     EvaValue eval() {
         for(;;) {
             int opcode = READ_BYTE();
-            log(opcode);
             switch(opcode) {
                 case OP_HALT: {
                     return pop();
@@ -191,13 +202,40 @@ class EvaVM {
                     break;
                 }
 
+                // Global variable value:
+                case OP_GET_GLOBAL: {
+                    auto globalIndex = READ_BYTE();
+                    push(global->get(globalIndex).value);
+                    break;
+                }
+
+                case OP_SET_GLOBAL: {
+                    auto globalIndex = READ_BYTE();
+                    auto value = peek(0);
+                    global->set(globalIndex, value);
+                    break;
+                }
+
                 default: {
                     DIE << "Unknown opcode: " << std::hex << opcode;
                 }
             }
         }    
     }
-    
+
+    /**
+     * Sets up global variables and function.
+     */
+    void setGlobalVariables() {
+        global->addConst("x", 10);
+        global->addConst("y", 20);
+    }
+
+    /**
+     * Global object
+     */
+    std::shared_ptr<Global> global;
+
     /**
      * Parser.
      */

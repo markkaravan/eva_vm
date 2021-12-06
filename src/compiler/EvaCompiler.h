@@ -8,6 +8,7 @@
 #include "../vm/EvaValue.h"
 #include "../bytecode/OpCode.h"
 #include "../disassembler/EvaDisassembler.h"
+#include "../vm/Global.h"
 
 #define ALLOC_CONST(tester, converter, allocator, value)    \
     do {                                                    \
@@ -31,8 +32,14 @@
 
 class EvaCompiler {
     public:
-        EvaCompiler() 
-            : disassembler(std::make_unique<EvaDisassembler>()) {}
+        EvaCompiler(std::shared_ptr<Global> global) 
+            : global(global),
+              disassembler(std::make_unique<EvaDisassembler>(global)) {}
+
+        // TODO: replace w/unique pointer
+        // EvaDisassembler* disassembler = new EvaDisassembler();
+
+
 
         /**
          *  Main compile API
@@ -78,7 +85,15 @@ class EvaCompiler {
                         emit(OP_CONST);
                         emit(booleanConstIdx(exp.string == "true" ? true : false));
                     } else {
-                        // TODO variables
+                        // Variables
+
+                        // 1. Global vars:
+                        if (!global->exists(exp.string)) {
+                            DIE << "[EvaCompiler]: Reference error: " << exp.string;
+                        }
+
+                        emit(OP_GET_GLOBAL);
+                        emit(global->getGlobalIndex(exp.string));
                     }
                     break;
                 /**
@@ -150,6 +165,40 @@ class EvaCompiler {
                             auto endBranchAddr = getOffset();
                             patchJumpAddress(endAddr, endBranchAddr);
                         }
+
+                        //----------------------------------
+                        // Variable declaration:
+
+                        else if (op == "var") {
+                            auto varName = exp.list[1].string;
+
+                            // 1. Global vars:
+                            global->define(varName);
+
+                            // Initializer
+                            gen(exp.list[2]);
+
+                            emit(OP_SET_GLOBAL);
+                            emit(global->getGlobalIndex(varName));
+
+                            // 2. Local vars: TODO
+                        }
+
+                        else if (op == "set") {
+                            auto varName = exp.list[1].string;
+                            // 1. Global vars:  
+
+                            // Initialization
+                            gen(exp.list[2]);
+
+                            auto globalIndex = global->getGlobalIndex(varName);
+                            if (globalIndex == -1) {
+                                DIE << "Reference error: " << varName << " is not defined.";
+                            }
+                            emit(OP_SET_GLOBAL);
+                            emit(global->getGlobalIndex(varName));
+                            // 2. Local vars: TODO
+                        }
                     }
                     break;
             }
@@ -161,7 +210,6 @@ class EvaCompiler {
     void disassembleBytecode() { disassembler->disassemble(co); }
 
     private:
-        std::unique_ptr<EvaDisassembler> disassembler;
 
         size_t getOffset() { return  co->code.size(); }
 
@@ -205,6 +253,17 @@ class EvaCompiler {
             writeByteAtOffset(offset, (value >> 8) & 0xff);
             writeByteAtOffset(offset + 1, value & 0xff);
         }
+
+        /**
+         * Global object
+         */
+        std::shared_ptr<Global> global;
+
+        /**
+         * Disassembler.
+         */
+        std::unique_ptr<EvaDisassembler> disassembler;
+
 
     /**
      *  Compiling code object
