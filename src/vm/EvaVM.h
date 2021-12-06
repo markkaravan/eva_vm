@@ -20,7 +20,11 @@ using syntax::EvaParser;
 
 #define READ_BYTE() *ip++
 
-#define GET_CONST() co->constants[READ_BYTE()]
+#define READ_SHORT() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
+
+#define TO_ADDRESS(index) (&co->code[index])
+
+#define GET_CONST() (co->constants[READ_BYTE()])
 
 #define STACK_LIMIT 512
 
@@ -141,7 +145,6 @@ class EvaVM {
                         auto s2 = AS_CPPSTRING(op2);
                         push(ALLOC_STRING(s1 + s2));
                     }
-                    
                     break;
                 }
                 case OP_SUB: {
@@ -161,7 +164,6 @@ class EvaVM {
                     auto op = READ_BYTE();
                     auto op2 = pop();
                     auto op1 = pop();
-
                     if (IS_NUMBER(op1) && IS_NUMBER(op2)) {
                         auto v1 = AS_NUMBER(op1);
                         auto v2 = AS_NUMBER(op2);
@@ -171,6 +173,25 @@ class EvaVM {
                         auto s2 = AS_CPPSTRING(op2);
                         COMPARE_VALUES(op, s1, s2);
                     }
+                    break;
+                }
+
+                // Conditional jump:
+                case OP_JMP_IF_FALSE: {
+                    auto cond = AS_BOOLEAN(pop()); // TODO: to boolean, 0->false etc
+
+                    auto address = READ_SHORT();
+
+                    if (!cond) {
+                        ip = TO_ADDRESS(address);
+                    }
+
+                    break;
+                }
+
+                // Conditional jump:
+                case OP_JMP: {
+                    ip = TO_ADDRESS(READ_SHORT());
                     break;
                 }
 

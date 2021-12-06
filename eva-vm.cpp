@@ -7,7 +7,7 @@ int main(int argc, char const *argv[]) {
 
     auto result = vm.exec(R"(
 
-        (!= 5 2)
+        (if (!= 5 5) 1 2)
 
     )");
 

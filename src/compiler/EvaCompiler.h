@@ -113,11 +113,48 @@ class EvaCompiler {
                             emit(OP_COMPARE);
                             emit(compareOps_[op]);
                         }
+
+                        //----------------------------------
+                        // Branch instructions:
+                        else if (op == "if") {
+                            // Emit <test>:
+                            gen(exp.list[1]);
+
+                            // Else branch.  Init with a 0 address
+                            emit(OP_JMP_IF_FALSE);
+                            // NOTE: we use 2-byte addresses:
+                            emit(0);
+                            emit(0);
+                            auto elseJmpAddr = getOffset() - 2;
+
+                            // Emit <consequent>
+                            gen(exp.list[2]);
+
+                            emit(OP_JMP);
+                            // NOTE: we use 2-byte addresses:
+                            emit(0);
+                            emit(0);
+                            auto endAddr = getOffset() - 2;
+
+                            // Patch the else branch address
+                            auto elseBranchAddr = getOffset();
+                            patchJumpAddress(elseJmpAddr, elseBranchAddr);
+
+                            // Emit <alternate> if we have it
+                            if (exp.list.size() == 4) {
+                                gen(exp.list[3]);
+                            }
+
+                            auto endBranchAddr = getOffset();
+                            patchJumpAddress(endAddr, endBranchAddr);
+                        }
                     }
                     break;
             }
         }
     private:
+        size_t getOffset() { return  co->code.size(); }
+
         /**
          *  Allocates a numeric constant
          */ 
@@ -143,6 +180,21 @@ class EvaCompiler {
         }
 
         void emit(uint8_t code) { co->code.push_back(code); }
+
+        /**
+         * Write byte at offset
+         */
+        void writeByteAtOffset(size_t offset, uint16_t value) {
+            co->code[offset] = value;
+        }
+
+        /**
+         * Patches jump address
+         */
+        void patchJumpAddress(size_t offset, uint16_t value) {
+            writeByteAtOffset(offset, (value >> 8) & 0xff);
+            writeByteAtOffset(offset + 1, value & 0xff);
+        }
 
     /**
      *  Compiling code object
