@@ -50,6 +50,7 @@ class EvaDisassembler {
                 case OP_POP:
                     return disassembleSimple(co, opcode, offset);
                 case OP_SCOPE_EXIT:
+                case OP_CALL:
                     return disassembleWord(co, opcode, offset);
                 case OP_CONST:
                     return disassembleConst(co, opcode, offset);

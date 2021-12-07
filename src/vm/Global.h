@@ -57,6 +57,18 @@ struct Global {
     }
 
     /**
+     * Adds a native function
+     */ 
+    void addNativeFunction(const std::string& name, std::function<void()> fn, 
+            size_t arity) {
+        if (exists(name)) {
+            return;
+        }
+
+        globals.push_back({name, ALLOC_NATIVE(fn, name, arity)});
+    }
+
+    /**
      * Get local index
      */ 
     int getGlobalIndex(const std::string& name) {
