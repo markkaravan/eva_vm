@@ -36,8 +36,8 @@ class EvaDisassembler {
             std::ios_base::fmtflags f(std::cout.flags());
 
             //Print bytecode offset:
-            std::cout << std::uppercase << std::hex << std::setfill('0') << std::setw(4)
-                    << offset << "           ";
+            std::cout << std::uppercase << std::hex << std::setfill('0') << std::right 
+                << std::setw(4) << offset << "           ";
 
             auto opcode = co->code[offset];
 
@@ -171,13 +171,12 @@ class EvaDisassembler {
          * Disassembles conditional jump
          */ 
         size_t disassembleJump(CodeObject* co, uint8_t opcode, size_t offset) {
-            std::ios_base::fmtflags f(std::cout.flags());
             dumpBytes(co, offset, 3);
             printOpCode(opcode);
             uint16_t address = readWordAtOffset(co, offset + 1);
-            std::cout << std::uppercase << std::hex << std::setfill('0') << std::setw(4)
-                        << (int)address << " ";
-            std::cout.flags(f);
+            std::cout << std::uppercase << std::hex << std::setfill('0') << std::right
+                << std::setw(4) << (int)address << " ";
+
             return offset + 3;
         }
 
