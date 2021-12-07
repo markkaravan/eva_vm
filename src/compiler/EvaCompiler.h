@@ -86,14 +86,26 @@ class EvaCompiler {
                         emit(booleanConstIdx(exp.string == "true" ? true : false));
                     } else {
                         // Variables
+                        auto varName = exp.string;
 
-                        // 1. Global vars:
-                        if (!global->exists(exp.string)) {
-                            DIE << "[EvaCompiler]: Reference error: " << exp.string;
+                        // 1. Local vars:
+
+                        auto localIndex = co->getLocalIndex(varName);
+
+                        if (localIndex != -1) {
+                            emit(OP_GET_LOCAL);
+                            emit(localIndex);
                         }
 
-                        emit(OP_GET_GLOBAL);
-                        emit(global->getGlobalIndex(exp.string));
+                        // 2. Global vars:
+                        else {
+                            if (!global->exists(varName)) {
+                                DIE << "[EvaCompiler]: Reference error: " << varName;
+                            }
+
+                            emit(OP_GET_GLOBAL);
+                            emit(global->getGlobalIndex(varName));
+                        }
                     }
                     break;
                 /**
@@ -172,32 +184,71 @@ class EvaCompiler {
                         else if (op == "var") {
                             auto varName = exp.list[1].string;
 
-                            // 1. Global vars:
-                            global->define(varName);
-
                             // Initializer
                             gen(exp.list[2]);
 
-                            emit(OP_SET_GLOBAL);
-                            emit(global->getGlobalIndex(varName));
+                            // 1. Global vars:
+                            if (isGlobalScope()) {
+                                global->define(varName);
+                                emit(OP_SET_GLOBAL);
+                                emit(global->getGlobalIndex(varName));
+                            }
 
                             // 2. Local vars: TODO
+                            else {
+                                co->addLocal(varName);
+                                emit(OP_SET_LOCAL);
+                                emit(co->getLocalIndex(varName));
+                            }
                         }
 
                         else if (op == "set") {
                             auto varName = exp.list[1].string;
-                            // 1. Global vars:  
 
                             // Initialization
                             gen(exp.list[2]);
 
-                            auto globalIndex = global->getGlobalIndex(varName);
-                            if (globalIndex == -1) {
-                                DIE << "Reference error: " << varName << " is not defined.";
+                            // 1. Local vars:
+                            auto localIndex = co->getLocalIndex(varName);
+
+                            if (localIndex != -1) {
+                                emit(OP_SET_LOCAL);
+                                emit(localIndex);
                             }
-                            emit(OP_SET_GLOBAL);
-                            emit(global->getGlobalIndex(varName));
-                            // 2. Local vars: TODO
+
+                            // 2. Global vars:  
+                            else {
+                                auto globalIndex = global->getGlobalIndex(varName);
+                                if (globalIndex == -1) {
+                                    DIE << "Reference error: " << varName << " is not defined.";
+                                }
+                                emit(OP_SET_GLOBAL);
+                                emit(global->getGlobalIndex(varName));
+                            }
+                        }
+
+                        //----------------------------------
+                        // Blocks:
+                        else if (op == "begin") {
+                            scopeEnter(); 
+
+                            // Compile each expression within the block:
+                            for (auto i = 1; i<exp.list.size(); i++) {
+                                // The value of the last expression is kept
+                                // on the stack as the final result
+                                bool isLast = i == exp.list.size() - 1;
+
+                                auto isLocalDeclaration =
+                                    isDeclaration(exp.list[i]) && !isGlobalScope();
+
+                                // Generate expression code;
+                                gen(exp.list[i]);
+
+                                if (!isLast && !isLocalDeclaration) {
+                                    emit(OP_POP);
+                                }
+                            }
+                            scopeExit();
                         }
                     }
                     break;
@@ -210,6 +261,63 @@ class EvaCompiler {
     void disassembleBytecode() { disassembler->disassemble(co); }
 
     private:
+
+        /**
+         * Global object
+         */
+        std::shared_ptr<Global> global;
+
+        /**
+         * Disassembler.
+         */
+        std::unique_ptr<EvaDisassembler> disassembler;
+
+
+        /**
+         * Enters new scope.
+         */
+        void scopeEnter() { co->scopeLevel++; }
+
+        /**
+         * Exits scope.
+         */
+        void scopeExit() { 
+            auto varsCount = getVarsCountOnScopeExit();
+            if (varsCount > 0) {
+                emit(OP_SCOPE_EXIT);
+                emit(varsCount);
+            }
+
+            co->scopeLevel--; 
+        }
+
+        /**
+         * Determine scope.
+         */        
+        bool isGlobalScope() {
+            return co->scopeLevel == 1;
+        }
+
+        bool isDeclaration(const Exp& exp) { return isVarDeclaration(exp); }
+
+        bool isVarDeclaration(const Exp& exp) { return isTaggedList(exp, "var"); }
+
+        bool isTaggedList(const Exp& exp, const std::string& tag) {
+            return exp.type == ExpType::LIST && exp.list[0].type == ExpType::SYMBOL &&
+                    exp.list[0].string == tag;
+        }
+
+        size_t getVarsCountOnScopeExit() {
+            auto varsCount = 0;
+
+            if (co->locals.size() > 0) {
+                while (co->locals.back().scopeLevel ==  co->scopeLevel) {
+                    co->locals.pop_back();
+                    varsCount++;
+                }
+            }
+            return varsCount;
+        }
 
         size_t getOffset() { return  co->code.size(); }
 
@@ -253,16 +361,6 @@ class EvaCompiler {
             writeByteAtOffset(offset, (value >> 8) & 0xff);
             writeByteAtOffset(offset + 1, value & 0xff);
         }
-
-        /**
-         * Global object
-         */
-        std::shared_ptr<Global> global;
-
-        /**
-         * Disassembler.
-         */
-        std::unique_ptr<EvaDisassembler> disassembler;
 
 
     /**

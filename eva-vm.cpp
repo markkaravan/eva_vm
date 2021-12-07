@@ -9,8 +9,17 @@ int main(int argc, char const *argv[]) {
 
     auto result = vm.exec(R"(
 
-        (set x (+ 3 (* y 10)))
+        (var x 5)
+        (set x (+ x 10))
+        x
 
+        (begin
+            (var x 100)
+            (begin
+                (var x 200)
+                x)
+            x)
+        x
     )");
 
     std::cout << "\n";

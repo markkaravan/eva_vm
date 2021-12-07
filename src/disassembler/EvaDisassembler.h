@@ -47,7 +47,10 @@ class EvaDisassembler {
                 case OP_SUB:
                 case OP_MUL:
                 case OP_DIV:
+                case OP_POP:
                     return disassembleSimple(co, opcode, offset);
+                case OP_SCOPE_EXIT:
+                    return disassembleWord(co, opcode, offset);
                 case OP_CONST:
                     return disassembleConst(co, opcode, offset);
                 case OP_COMPARE:
@@ -58,6 +61,9 @@ class EvaDisassembler {
                 case OP_GET_GLOBAL:
                 case OP_SET_GLOBAL:
                     return disassembleGlobal(co, opcode, offset);
+                case OP_GET_LOCAL:
+                case OP_SET_LOCAL:
+                    return disassembleLocal(co, opcode, offset);
                 default:
                     DIE << "disassembleInstruction: no disassembly for "
                         << opcodeToString(opcode);
@@ -75,6 +81,16 @@ class EvaDisassembler {
             dumpBytes(co, offset, 1);
             printOpCode(opcode);
             return offset + 1;
+        }
+
+        /**
+         * Disassemble a word
+         */ 
+        size_t disassembleWord(CodeObject* co, uint8_t opcode, size_t offset) {
+            dumpBytes(co, offset, 2);
+            printOpCode(opcode);
+            std::cout << (int)co->code[offset + 1];
+            return offset + 2;
         }
 
         /**
@@ -97,8 +113,20 @@ class EvaDisassembler {
             dumpBytes(co, offset, 2);
             printOpCode(opcode);
             auto globalIndex = co->code[offset + 1];
-            std::cout << "gl#" << (int)globalIndex << " (" << global->get(globalIndex).name
+            std::cout << (int)globalIndex << " (" << global->get(globalIndex).name
                       << ")";
+            return offset + 2;
+        }
+
+        /**
+         * Disassemble local variable instruction
+         */ 
+        // TODO opcode and offset in wrong order
+        size_t disassembleLocal(CodeObject* co, uint8_t opcode, size_t offset) {
+            dumpBytes(co, offset, 2);
+            printOpCode(opcode);
+            auto localIndex = co->code[offset + 1];
+            std::cout << (int)localIndex << " (" << co->locals[localIndex].name << ")";
             return offset + 2;
         }
 
@@ -156,6 +184,7 @@ class EvaDisassembler {
         uint16_t readWordAtOffset(CodeObject* co, size_t offset) {
             return (uint16_t)((co->code[offset] << 8) | co->code[offset + 1]);
         }
+
         /**
          * Global object.
          */

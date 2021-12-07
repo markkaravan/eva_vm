@@ -75,11 +75,14 @@ struct Global {
      */ 
     bool exists(const std::string& name) { return getGlobalIndex(name) != -1; }
 
-    void showAllGlobals() {
-        std::cout << " Showing globals: " << std::endl;
-        if (globals.size() > 0) {
-            for (auto i = (int)globals.size()-1; i >=0; i--){
-                std::cout << i << ": " << globals[i].name << std::endl; 
+    void pprintGlobals() {
+        std::cout << "----- Globals ------"  << std::endl;
+        if (globals.size() == 0) {
+            std::cout << "none" << std::endl;
+        }
+        else {
+            for (auto i=0; i<globals.size(); i++) {
+                std::cout << globals[i].name << ": " << globals[i].value << std::endl;
             }
         }
     }
