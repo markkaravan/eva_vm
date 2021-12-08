@@ -10,6 +10,9 @@
 #include "../disassembler/EvaDisassembler.h"
 #include "../vm/Global.h"
 
+
+//------------------------------------------------------------
+
 #define ALLOC_CONST(tester, converter, allocator, value)    \
     do {                                                    \
         for (auto i=0; i<co->constants.size(); i++) {       \
@@ -29,6 +32,20 @@
         gen(exp.list[2]);       \
         emit(op);               \
     } while (false)
+
+#define FUNCTION_CALL(exp)                              \
+    do {                                                \
+        gen(exp.list[0]);                               \
+        for (auto i=1; i<exp.list.size(); i++) {        \
+            gen(exp.list[i]);                           \
+        }                                               \
+        emit(OP_CALL);                                  \
+        emit(exp.list.size() - 1);                      \
+    } while (false)
+
+
+
+
 
 class EvaCompiler {
     public:
@@ -222,6 +239,18 @@ class EvaCompiler {
                         else if (op == "var") {
                             auto varName = exp.list[1].string;
 
+                            // Special treatment of (var foo (lambda ...))
+                            // to capture function name from variable:
+                            if (isLambda(exp.list[2])) {
+                                compileFunction(
+                                    /* exp */       exp.list[2],
+                                    /* name */      varName,
+                                    /* params */    exp.list[2].list[1],
+                                    /* body */      exp.list[2].list[2]);
+                            } else {
+                                gen(exp.list[2]);
+                            }
+
                             // Initializer
                             gen(exp.list[2]);
 
@@ -290,58 +319,16 @@ class EvaCompiler {
                         }
                         //----------------------------------
                         // Function declaration (def <name> <params> <body>)
+                        //
+                        // Sugar for: (var <name> (lambda <params> <body>))
+
                         else if (op == "def") {
                             auto fnName = exp.list[1].string;
-                            auto params = exp.list[2].list;
-                            auto arity = params.size();
-                            auto body = exp.list[3];
-
-                            // Save previous code object:
-                            auto prevCo = co;
-
-                            // Function code object:
-                            auto coValue = createCodeObjectValue(fnName, arity);
-                            co = AS_CODE(coValue);
-
-                            // Store new co as a constant:
-                            prevCo->constants.push_back(coValue);
-
-                            // Function name is registered as a local,
-                            // so the function can call itself recursively.
-                            co->addLocal(fnName);
-
-                            // Parameters are added as variables.
-                            for (auto i = 0; i < arity; i++) {
-                                auto argName = params[i].string;
-                                co->addLocal(argName);
-                            }
-
-                            // Compile body in the new code object:
-                            gen(body);
-
-                            // If we don't have explicit block which pops locals,
-                            // we should pop arguments (if any) - callee cleanup.
-                            // +1 is for the function itself which is set as a local.
-                            if (!isBlock(body)) {
-                                emit(OP_SCOPE_EXIT);
-                                emit(arity + 1);
-                            }
-
-                            // Explicit return to restore caller address.
-                            emit(OP_RETURN);
-
-                            // Create the function:
-                            auto fn = ALLOC_FUNCTION(co);
-
-                            // Restore the code object:
-                            co = prevCo;
-
-                            // Add function as a constant to our co:
-                            co->addConst(fn);
-
-                            // And emit code for this new constant:
-                            emit(OP_CONST);
-                            emit(co->constants.size() - 1);
+                            compileFunction(
+                                /* exp */       exp,
+                                /* name */      fnName,
+                                /* params */    exp.list[2],
+                                /* body */      exp.list[3]);
 
                             //  TODO: segfault problem in eva-vm.cpp here
                             // Define the function as a variable in our co:
@@ -357,8 +344,23 @@ class EvaCompiler {
                         }
 
                         //----------------------------------
+                        // Lambda expression:
+                        //
+                        // (lambda (a b) (+ a b))
+                        else if (op == "lambda") {
+                            compileFunction(
+                                /* exp */       exp,
+                                /* name */      "lambda",
+                                /* params */    exp.list[1],
+                                /* body */      exp.list[2]);
+                        }
+
+                        //----------------------------------
                         // Function calls:
                         else {
+                            // Named function calls
+                            FUNCTION_CALL(exp);
+
                             // Push function onto the stack:
                             gen(exp.list[0]);
 
@@ -371,6 +373,17 @@ class EvaCompiler {
                             emit(exp.list.size() - 1);
                         }
                     }
+                    //----------------------------------
+                    // Lambda function calls:
+                    //
+                    // ((lambda (x) (* x x)) 2)
+
+                    //if (tag.type == ExpType::SYMBOL) {
+                    else {
+                        // Inline lambda call.
+                        FUNCTION_CALL(exp);
+                    }
+
                     break;
             }
         }
@@ -400,6 +413,65 @@ class EvaCompiler {
          * Disassembler.
          */
         std::unique_ptr<EvaDisassembler> disassembler;
+
+        /**
+         * Compiles a function
+         */
+        void compileFunction(
+            const Exp &exp, 
+            const std::string fnName, 
+            const Exp &params, 
+            const Exp &body) {
+            
+            auto arity = params.list.size();
+
+            // Save previous code object
+            auto prevCo = co;
+
+            // Function code object:
+            auto coValue = createCodeObjectValue(fnName, arity);
+            co = AS_CODE(coValue);
+
+            // Store new co as a constant:
+            prevCo->constants.push_back(coValue);
+
+            // Function name is registered as a local,
+            // so the function can call itself recursively.
+            co->addLocal(fnName);
+
+            // Parameters are added as variables.
+            for (auto i = 0; i < arity; i++) {
+                auto argName = params.list[i].string;
+                co->addLocal(argName);
+            }
+
+            // Compile body in the new code object:
+            gen(body);
+
+            // If we don't have explicit block which pops locals,
+            // we should pop arguments (if any) - callee cleanup.
+            // +1 is for the function itself which is set as a local.
+            if (!isBlock(body)) {
+                emit(OP_SCOPE_EXIT);
+                emit(arity + 1);
+            }
+
+            // Explicit return to restore caller address.
+            emit(OP_RETURN);
+
+            // Create the function:
+            auto fn = ALLOC_FUNCTION(co);
+
+            // Restore the code object:
+            co = prevCo;
+
+            // Add function as a constant to our co:
+            co->addConst(fn);
+
+            // And emit code for this new constant:
+            emit(OP_CONST);
+            emit(co->constants.size() - 1);
+        }
 
         /**
          * Creates a new code object.
@@ -448,6 +520,11 @@ class EvaCompiler {
         bool isDeclaration(const Exp& exp) { return isVarDeclaration(exp); }
 
         bool isVarDeclaration(const Exp& exp) { return isTaggedList(exp, "var"); }
+
+        bool isLambda(const Exp& exp) { return isTaggedList(exp, "lambda"); }
+
+        // TODO in the notes, but not in the  code for some reason
+        bool isFunctionDeclaration(const Exp& exp) { return isTaggedList(exp, "def"); }
 
         bool isBlock(const Exp& exp) { return isTaggedList(exp, "begin"); }
 

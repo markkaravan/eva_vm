@@ -41,12 +41,19 @@ int main(int argc, char const *argv[]) {
         // (begin
         //     (+ 3 4)
         //     (* 4 5))
-        (def factorial (x)
-            (if (== x 1) 
-                1 
-                (* x (factorial (- x 1)))))
 
-        (factorial 5)
+        // (def factorial (x)
+        //     (if (== x 1) 
+        //         1 
+        //         (* x (factorial (- x 1)))))
+
+        // (factorial 5)
+
+        (def square (x) (* x x))
+
+        (var square2 (lambda (x) (* x x)))
+
+        (square 2)
 
     )");
 
