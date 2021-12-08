@@ -251,21 +251,14 @@ class EvaCompiler {
                                 gen(exp.list[2]);
                             }
 
-                            // Initializer
-                            gen(exp.list[2]);
-
                             // 1. Global vars:
                             if (isGlobalScope()) {
                                 global->define(varName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
                             }
-
-                            // 2. Local vars: TODO
                             else {
                                 co->addLocal(varName);
-                                emit(OP_SET_LOCAL);
-                                emit(co->getLocalIndex(varName));
                             }
                         }
 
@@ -305,6 +298,7 @@ class EvaCompiler {
                                 // on the stack as the final result
                                 bool isLast = i == exp.list.size() - 1;
 
+                                // TODO: some kinda problem here
                                 auto isLocalDeclaration =
                                     isDeclaration(exp.list[i]) && !isGlobalScope();
 
@@ -330,16 +324,15 @@ class EvaCompiler {
                                 /* params */    exp.list[2],
                                 /* body */      exp.list[3]);
 
-                            //  TODO: segfault problem in eva-vm.cpp here
                             // Define the function as a variable in our co:
-                            if (!isGlobalScope()) {
+                            if (isGlobalScope()) {
                                 global->define(fnName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(fnName));
                             } else {
                                 co->addLocal(fnName);
-                                emit(OP_SET_LOCAL);
-                                emit(co->getLocalIndex(fnName));
+                                // No need to set explicit "set" the var value
+                                // since function is already on the stack at needed slot
                             }
                         }
 

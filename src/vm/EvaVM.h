@@ -247,6 +247,7 @@ class EvaVM {
                     break;
                 }
 
+                // TODO: error here with peek(0)/pop()
                 case OP_SET_GLOBAL: {
                     auto globalIndex = READ_BYTE();
                     auto value = peek(0);
