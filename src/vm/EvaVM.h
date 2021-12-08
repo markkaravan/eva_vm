@@ -303,7 +303,7 @@ class EvaVM {
      */
     void setGlobalVariables() {
         global->addNativeFunction(
-            "square",
+            "native-square",
             [&]() {
                 auto x = AS_NUMBER(peek(0));
                 push(NUMBER(x * x));

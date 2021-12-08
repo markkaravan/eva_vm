@@ -20,7 +20,7 @@
                 return i;                                   \
             }                                               \
         }                                                   \
-        co->constants.push_back(allocator(value));          \
+        co->addConst(allocator(value));          \
     } while (false)
 
 #define GEN_BINARY_OP(op)       \
@@ -46,7 +46,7 @@ class EvaCompiler {
          */ 
         CodeObject* compile(const Exp& exp) {
             // Allocate new code object:
-            co = AS_CODE(ALLOC_CODE("main"));
+            co = AS_CODE(createCodeObjectValue("main"));
 
             // Generate recursively from top
             gen(exp);
@@ -284,6 +284,72 @@ class EvaCompiler {
                             }
                             scopeExit();
                         }
+                        //----------------------------------
+                        // Function declaration (def <name> <params> <body>)
+                        else if (op == "def") {
+                            auto fnName = exp.list[1].string;
+                            auto params = exp.list[2].list;
+                            auto arity = params.size();
+                            auto body = exp.list[3];
+
+                            // Save previous code object:
+                            auto prevCo = co;
+
+                            // Function code object:
+                            auto coValue = createCodeObjectValue(fnName, arity);
+                            co = AS_CODE(coValue);
+
+                            // Store new co as a constant:
+                            prevCo->constants.push_back(coValue);
+
+                            // Function name is registered as a local,
+                            // so the function can all itself recursively.
+                            co->addLocal(fnName);
+
+                            // Parameters are added as variables.
+                            for (auto i = 0; i < arity; i++) {
+                                auto argName = params[i].string;
+                                co->addLocal(argName);
+                            }
+
+                            // Compile body in the new code object:
+                            gen(body);
+
+                            // If we don't have explicit block which pops locals,
+                            // we should pop arguments (if any) - callee cleanup.
+                            // +1 is for the function itself which is set as a local.
+                            if (!isBlock(body)) {
+                                emit(OP_SCOPE_EXIT);
+                                emit(arity + 1);
+                            }
+
+                            // Explicit return to restore caller address.
+                            emit(OP_RETURN);
+
+                            // Create the function:
+                            auto fn = ALLOC_FUNCTION(co);
+
+                            // Restore the code object:
+                            co = prevCo;
+
+                            // Add function as a constant to our co:
+                            co->addConst(fn);
+
+                            // And emit code for this new constant:
+                            emit(OP_CONST);
+                            emit(co->constants.size() - 1);
+
+                            // Define the function as a variable in our co:
+                            if (!isGlobalScope()) {
+                                global->define(fnName);
+                                emit(OP_SET_GLOBAL);
+                                emit(global->getGlobalIndex(fnName));
+                            } else {
+                                co->addLocal(fnName);
+                                emit(OP_SET_LOCAL);
+                                emit(co->getLocalIndex(fnName));
+                            }
+                        }
 
                         //----------------------------------
                         // Function calls:
@@ -307,7 +373,11 @@ class EvaCompiler {
     /**
      *  Disassemble all compliication units
      */ 
-    void disassembleBytecode() { disassembler->disassemble(co); }
+    void disassembleBytecode() { 
+        for (auto& co_ : codeObjects_) {
+            disassembler->disassemble(co_); }
+        }
+    }  
 
     private:
 
@@ -321,6 +391,15 @@ class EvaCompiler {
          */
         std::unique_ptr<EvaDisassembler> disassembler;
 
+        /**
+         * Creates a new code object.
+         */
+        EvaValue createCodeObjectValue(const std::string &name, size_t arity = 0) {
+            auto coValue = ALLOC_CODE(name, arity);
+            auto co = AS_CODE(coValue);
+            codeObjects_.push_back(co);
+            return coValue;
+        }
 
         /**
          * Enters new scope.
@@ -331,9 +410,17 @@ class EvaCompiler {
          * Exits scope.
          */
         void scopeExit() { 
+            // Pop vars from the satack if they were declared
+            // within this specific scope
             auto varsCount = getVarsCountOnScopeExit();
-            if (varsCount > 0) {
+
+            if (varsCount > 0 || co->arity > 0) {
                 emit(OP_SCOPE_EXIT);
+
+                if (isFunctionBody()) {
+                    varsCount += co->arity + 1;
+                }
+
                 emit(varsCount);
             }
 
@@ -343,13 +430,15 @@ class EvaCompiler {
         /**
          * Determine scope.
          */        
-        bool isGlobalScope() {
-            return co->scopeLevel == 1;
-        }
+        bool isGlobalScope() { return co->name == "main" && co->scopeLevel == 1; }
+
+        bool isFunctionBody() { return co->name != "main" && co->scopeLevel == 1; }
 
         bool isDeclaration(const Exp& exp) { return isVarDeclaration(exp); }
 
         bool isVarDeclaration(const Exp& exp) { return isTaggedList(exp, "var"); }
+
+        bool isBlock(const Exp& exp) { return isTaggedList(exp, "begin"); }
 
         bool isTaggedList(const Exp& exp, const std::string& tag) {
             return exp.type == ExpType::LIST && exp.list[0].type == ExpType::SYMBOL &&
@@ -416,6 +505,11 @@ class EvaCompiler {
      *  Compiling code object
      */ 
     CodeObject* co;
+
+    /**
+     *  All code objects
+     */ 
+    std::vector<CodeObject*> codeObjects_;
 
     /**
      *  Comparison map

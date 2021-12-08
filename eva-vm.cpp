@@ -9,9 +9,9 @@ int main(int argc, char const *argv[]) {
 
     auto result = vm.exec(R"(
 
-        (var x 15)
+        (var x 10)
 
-        (sum 2 x)
+        (native-square x)
 
     )");
 
