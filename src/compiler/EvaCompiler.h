@@ -44,17 +44,16 @@ class EvaCompiler {
         /**
          *  Main compile API
          */ 
-        CodeObject* compile(const Exp& exp) {
+        void compile(const Exp& exp) {
             // Allocate new code object:
             co = AS_CODE(createCodeObjectValue("main"));
+            main = AS_FUNCTION(ALLOC_FUNCTION(co));
 
             // Generate recursively from top
             gen(exp);
 
             // Explicit Halt market
             emit(OP_HALT);
-
-            return co;
         }
 
         /**
@@ -376,14 +375,19 @@ class EvaCompiler {
             }
         }
 
-    /**
-     *  Disassemble all compliication units
-     */ 
-    void disassembleBytecode() { 
-        for (auto& co_ : codeObjects_) {
-            disassembler->disassemble(co_);
-        }
-    }  
+        /**
+         *  Disassemble all compliication units
+         */ 
+        void disassembleBytecode() { 
+            for (auto& co_ : codeObjects_) {
+                disassembler->disassemble(co_);
+            }
+        } 
+
+        /**
+         * Returns main function (entry point).
+         */
+        FunctionObject* getMainFunction() { return main; } 
 
     private:
 
@@ -507,21 +511,25 @@ class EvaCompiler {
             writeByteAtOffset(offset + 1, value & 0xff);
         }
 
+        /**
+         *  Compiling code object
+         */ 
+        CodeObject* co;
 
-    /**
-     *  Compiling code object
-     */ 
-    CodeObject* co;
+        /**
+         *  Main entry point for function
+         */ 
+        FunctionObject* main;
 
-    /**
-     *  All code objects
-     */ 
-    std::vector<CodeObject*> codeObjects_;
+        /**
+         *  All code objects
+         */ 
+        std::vector<CodeObject*> codeObjects_;
 
-    /**
-     *  Comparison map
-     */ 
-    static std::map<std::string, uint8_t> compareOps_;
+        /**
+         *  Comparison map
+         */ 
+        static std::map<std::string, uint8_t> compareOps_;
 };
 
 std::map<std::string, uint8_t> EvaCompiler::compareOps_ = {

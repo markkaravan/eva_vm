@@ -9,6 +9,7 @@
 #include <vector>
 #include <array>
 #include <iostream>
+#include <stack>
 
 #include "../Logger.h"
 #include "../bytecode/OpCode.h"
@@ -23,9 +24,9 @@ using syntax::EvaParser;
 
 #define READ_SHORT() (ip += 2, (uint16_t) ((ip[-2] << 8) | ip[-1]))
 
-#define TO_ADDRESS(index) (&co->code[index])
+#define TO_ADDRESS(index) (&fn->co->code[index])
 
-#define GET_CONST() (co->constants[READ_BYTE()])
+#define GET_CONST() (fn->co->constants[READ_BYTE()])
 
 #define STACK_LIMIT 512
 
@@ -68,7 +69,30 @@ using syntax::EvaParser;
         push(BOOLEAN(res));             \
     } while (false)
 
+// --------------------------------------------------------------
+/**
+ * Stack frame for function calls.
+ */ 
+struct Frame {
+    /**
+     * Return address of the caller (ip of the caller)
+     */ 
+    uint8_t* ra;
 
+    /**
+     * Base pointer of the caller
+     */ 
+    EvaValue* bp;
+
+    /**
+     * Reference to the running function:
+     * contains code, locals, etc.
+     */ 
+    FunctionObject* fn;
+};
+
+
+// --------------------------------------------------------------
 class EvaVM {
     public:
         EvaVM() 
@@ -114,10 +138,13 @@ class EvaVM {
         auto ast = parser->parse("(begin " + program + ")");
 
         // 2. Compile to Bytecode
-        co = compiler->compile(ast);
+        compiler->compile(ast);
+
+        //Start from the main entry point:
+        fn = compiler->getMainFunction();
 
         // Set IP to beginning
-        ip = &co->code[0];
+        ip = &fn->co->code[0];
 
         // Initialize stack
         sp = &stack[0];
@@ -289,6 +316,34 @@ class EvaVM {
                     }
 
                     // 2. User-defined function TODO
+                    auto callee = AS_FUNCTION(fnValue);
+
+                    // save execution context, restored on OP_RETURN
+                    callStack.push(Frame{ip, bp, fn});
+
+                    // To access locals, etc:
+                    fn = callee;
+
+                    // Set the base (frame) pointer for the callee:
+                    bp = sp - argsCount - 1;
+
+                    // Jump to the function code
+                    ip = &callee->co->code[0];
+
+                    break;
+                }
+
+                case OP_RETURN: {
+                    // Restore the caller address
+                    auto callerFrame = callStack.top();
+
+                    // Restore stack pointers:
+                    ip = callerFrame.ra;
+                    bp = callerFrame.bp;
+                    fn = callerFrame.fn;
+
+                    callStack.pop();
+                    break;
                 }
 
                 default: {
@@ -358,9 +413,14 @@ class EvaVM {
     std::array<EvaValue, STACK_LIMIT> stack;
 
     /**
+     * Separate stack for calls.  Keeps return addresses.
+     */
+    std::stack<Frame> callStack;
+
+    /**
      * Code object
      */ 
-    CodeObject* co;
+    FunctionObject* fn;
 
     //-----------------------------------------------
     //  Debug functions:

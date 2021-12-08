@@ -33,14 +33,20 @@ int main(int argc, char const *argv[]) {
 
         // (def square (x) (* x x))
 
-        (def sum (a b)
-            (begin
-                (var x 10)
-                (+ x (+ a b))))
+        // (def sum (a b)
+        //     (begin
+        //         (var x 10)
+        //         (+ x (+ a b))))
 
         // (begin
         //     (+ 3 4)
         //     (* 4 5))
+        (def factorial (x)
+            (if (== x 1) 
+                1 
+                (* x (factorial (- x 1)))))
+
+        (factorial 5)
 
     )");
 
