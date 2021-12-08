@@ -136,7 +136,7 @@ class EvaVM {
      */
     EvaValue eval() {
         for(;;) {
-            dumpStack();
+            // dumpStack();
             int opcode = READ_BYTE();
             switch(opcode) {
                 case OP_HALT: {
@@ -311,7 +311,7 @@ class EvaVM {
             1);
 
         global->addNativeFunction(
-            "sum",
+            "native-sum",
             [&]() {
                 auto v2 = AS_NUMBER(peek(0));
                 auto v1 = AS_NUMBER(peek(1));

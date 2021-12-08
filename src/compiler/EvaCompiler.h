@@ -211,6 +211,11 @@ class EvaCompiler {
 
                         }
 
+                        //----------------------------------
+                        // For loop:
+
+                        // TODO: see end of while loop video
+
 
                         //----------------------------------
                         // Variable declaration:
@@ -303,7 +308,7 @@ class EvaCompiler {
                             prevCo->constants.push_back(coValue);
 
                             // Function name is registered as a local,
-                            // so the function can all itself recursively.
+                            // so the function can call itself recursively.
                             co->addLocal(fnName);
 
                             // Parameters are added as variables.
@@ -339,6 +344,7 @@ class EvaCompiler {
                             emit(OP_CONST);
                             emit(co->constants.size() - 1);
 
+                            //  TODO: segfault problem in eva-vm.cpp here
                             // Define the function as a variable in our co:
                             if (!isGlobalScope()) {
                                 global->define(fnName);
@@ -375,7 +381,7 @@ class EvaCompiler {
      */ 
     void disassembleBytecode() { 
         for (auto& co_ : codeObjects_) {
-            disassembler->disassemble(co_); }
+            disassembler->disassemble(co_);
         }
     }  
 
@@ -417,6 +423,7 @@ class EvaCompiler {
             if (varsCount > 0 || co->arity > 0) {
                 emit(OP_SCOPE_EXIT);
 
+                // +1 for the function itself
                 if (isFunctionBody()) {
                     varsCount += co->arity + 1;
                 }
