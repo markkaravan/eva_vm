@@ -374,8 +374,6 @@ class EvaVM {
                 push(NUMBER(v1 + v2));
             },
             2);
-
-        global->addConst("y", 20);
     }
 
     /**
