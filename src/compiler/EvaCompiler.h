@@ -9,6 +9,7 @@
 #include "../bytecode/OpCode.h"
 #include "../disassembler/EvaDisassembler.h"
 #include "../vm/Global.h"
+#include "Scope.h"
 
 
 //------------------------------------------------------------
@@ -66,12 +67,121 @@ class EvaCompiler {
             co = AS_CODE(createCodeObjectValue("main"));
             main = AS_FUNCTION(ALLOC_FUNCTION(co));
 
+            // Scope analysis
+            analyze(exp, nullptr);
+
             // Generate recursively from top
             gen(exp);
 
             // Explicit Halt market
             emit(OP_HALT);
         }
+
+        /**
+         *  Scope analysis
+         */
+        void analyze(const Exp& exp, std::shared_ptr<Scope> scope) {
+            /**
+             * -----------------------------------------
+             * Symbols
+             */
+            if (exp.type == ExpType::SYMBOL) {
+                /**
+                 * Boolean
+                 */
+                if (exp.string == "true" || exp.string == "false") {
+                    // Do nothing
+                } else {
+                    scope->maybePromote(exp.string);
+                }
+            }
+
+
+            /**
+             * -----------------------------------------
+             * Lists
+             */
+            else if (exp.type == ExpType::LIST) {
+                auto tag = exp.list[0];
+
+                /**
+                 * -----------------------------------------
+                 * Special cases
+                 */
+                if (tag.type == ExpType::SYMBOL) {
+                    auto op = tag.string;
+
+                    // Block scope:
+                    if (op == "begin") {
+                        auto newScope = std::make_shared<Scope>(
+                            scope == nullptr ? ScopeType::GLOBAL : ScopeType::BLOCK, scope);
+
+                        scopeInfo_[&exp] = newScope;
+                        for (auto i = 1; i < exp.list.size(); ++i) {
+                            analyze(exp.list[i], newScope);
+                        }
+                    }
+
+                    // -------------------------------------
+                    // Variable declaration:
+                    else if (op == "var") {
+                        scope->addLocal(exp.list[1].string);
+                        analyze(exp.list[2], scope);
+                    }
+
+                    // -------------------------------------
+                    // Functional declaration:
+                    else if (op == "def") {
+                        auto fnName = exp.list[1].string;
+
+                        scope->addLocal(fnName);
+
+                        auto newScope = std::make_shared<Scope>(ScopeType::FUNCTION, scope);
+                        scopeInfo_[&exp] = newScope;
+
+                        newScope->addLocal(fnName);
+
+                        auto arity = exp.list[2].list.size();
+
+                        // Params
+                        for (auto i = 0; i<arity; i++) {
+                            newScope->addLocal(exp.list[2].list[i].string);
+                        }
+
+                        // Body
+                        analyze(exp.list[3], newScope);
+                    }
+
+                    else if (op == "lambda") {
+                        auto newScope = std::make_shared<Scope>(ScopeType::FUNCTION, scope);
+                        scopeInfo_[&exp] = newScope;
+
+                        auto arity = exp.list[1].list.size();
+
+                        // Params
+                        for (auto i=0; i<arity; i++) {
+                            newScope->addLocal(exp.list[1].list[i].string);
+                        }
+
+                        // Body
+                        analyze(exp.list[2], newScope);
+                    }
+
+                    else {
+                        for (auto i=1; i<exp.list.size(); ++i) {
+                            analyze(exp.list[i], scope);
+                        }
+                    }
+                // if (tag.type == ExpType::SYMBOL) {
+                } else {
+                    for (auto i = 1; i<exp.list.size(); ++i) {
+                        analyze(exp.list[i], scope);
+                    }
+                }
+            }
+        }
+
+
 
         /**
          *  Main compile loop
@@ -105,9 +215,7 @@ class EvaCompiler {
                         auto varName = exp.string;
 
                         // 1. Local vars:
-
                         auto localIndex = co->getLocalIndex(varName);
-
                         if (localIndex != -1) {
                             emit(OP_GET_LOCAL);
                             emit(localIndex);
@@ -118,7 +226,6 @@ class EvaCompiler {
                             if (!global->exists(varName)) {
                                 DIE << "[EvaCompiler]: Reference error: " << varName;
                             }
-
                             emit(OP_GET_GLOBAL);
                             emit(global->getGlobalIndex(varName));
                         }
@@ -580,6 +687,11 @@ class EvaCompiler {
             writeByteAtOffset(offset, (value >> 8) & 0xff);
             writeByteAtOffset(offset + 1, value & 0xff);
         }
+
+        /**
+         *  Scope info
+         */ 
+        std::map<const Exp*, std::shared_ptr<Scope>> scopeInfo_;
 
         /**
          *  Compiling code object

@@ -8,6 +8,7 @@
 int main(int argc, char const *argv[]) {
     EvaVM vm;
 
+    // TODO set up some kind of rudimentary TDD
     auto result = vm.exec(R"(
 
         // (def square (x) (* x x))
@@ -35,6 +36,15 @@ int main(int argc, char const *argv[]) {
         // (native-square 2)
 
         ///////////////////////////////
+
+        // (var x 10)
+        // (def foo () x)
+        // (foo)
+
+        (begin
+            (var v 100)
+            (def bar () y)
+            (bar))
 
         // (def factorial (x)
         //     (if (== x 1) 
