@@ -12,7 +12,9 @@ int main(int argc, char const *argv[]) {
     auto result = vm.exec(R"(
 
         // (def square (x) (* x x))
-        // (square 4)
+        
+
+        // (native-square 4)
 
         // (var square (lambda (x) (* x x)))
         // (square 4)
@@ -35,16 +37,31 @@ int main(int argc, char const *argv[]) {
 
         // (native-square 2)
 
+        (var x 10)
+
+        (def foo () x)
+
+        (begin
+            (var y 100)
+            (var q 300)
+            q
+            (+ y x)
+            (begin
+                (var z 200)
+                z
+                (def bar () (+ y z))
+                (bar)))
         ///////////////////////////////
+
 
         // (var x 10)
         // (def foo () x)
         // (foo)
 
-        (begin
-            (var v 100)
-            (def bar () y)
-            (bar))
+        // (begin
+        //     (var v 100)
+        //     (def bar () y)
+        //     (bar))
 
         // (def factorial (x)
         //     (if (== x 1) 
@@ -56,7 +73,8 @@ int main(int argc, char const *argv[]) {
 
     )");
 
-    vm.dumpStack();
+    std::cout << "====================" << std::endl << " This is the final stack: " << std::endl;
+    vm.dumpStack(0);
 
     std::cout << "\n";
     log(result);

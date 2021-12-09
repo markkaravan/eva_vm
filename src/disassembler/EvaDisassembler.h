@@ -49,6 +49,7 @@ class EvaDisassembler {
                 case OP_DIV:
                 case OP_POP:
                 case OP_RETURN:
+                case OP_FAKE_TEST:
                     return disassembleSimple(co, opcode, offset);
                 case OP_SCOPE_EXIT:
                 case OP_CALL:
@@ -65,6 +66,9 @@ class EvaDisassembler {
                     return disassembleGlobal(co, opcode, offset);
                 case OP_GET_LOCAL:
                 case OP_SET_LOCAL:
+                    return disassembleLocal(co, opcode, offset);
+                case OP_GET_CELL:
+                case OP_SET_CELL:
                     return disassembleLocal(co, opcode, offset);
                 default:
                     DIE << "disassembleInstruction: no disassembly for "
@@ -123,12 +127,22 @@ class EvaDisassembler {
         /**
          * Disassemble local variable instruction
          */ 
-        // TODO opcode and offset in wrong order
         size_t disassembleLocal(CodeObject* co, uint8_t opcode, size_t offset) {
             dumpBytes(co, offset, 2);
             printOpCode(opcode);
             auto localIndex = co->code[offset + 1];
             std::cout << (int)localIndex << " (" << co->locals[localIndex].name << ")";
+            return offset + 2;
+        }
+
+        /**
+         * Disassemble cell instruction
+         */ 
+        size_t disassembleCell(CodeObject* co, uint8_t opcode, size_t offset) {
+            dumpBytes(co, offset, 2);
+            printOpCode(opcode);
+            auto cellIndex = co->code[offset + 1];
+            std::cout << (int)cellIndex << " (" << co->cellNames[cellIndex] << ")";
             return offset + 2;
         }
 

@@ -121,6 +121,34 @@ struct Scope {
         return parent->resolve(name, allocType);
     }
 
+    /**
+     * Returns get opcode based on allocation type.
+     */
+    int getNameGetter(const std::string& name) {
+        switch (allocInfo[name]) {
+            case AllocType::GLOBAL:
+                return OP_GET_GLOBAL;
+            case AllocType::LOCAL:
+                return OP_GET_LOCAL;
+            case AllocType::CELL:
+                return OP_GET_CELL;
+        }
+    }
+
+    /**
+     * Returns set opcode based on allocation type.
+     */
+    int getNameSetter(const std::string& name) {
+        switch (allocInfo[name]) {
+            case AllocType::GLOBAL:
+                return OP_SET_GLOBAL;
+            case AllocType::LOCAL:
+                return OP_SET_LOCAL;
+            case AllocType::CELL:
+                return OP_SET_CELL;
+        }
+    }
+
 
 
     /**

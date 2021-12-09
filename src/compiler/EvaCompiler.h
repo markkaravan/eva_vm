@@ -214,19 +214,24 @@ class EvaCompiler {
                         // Variables
                         auto varName = exp.string;
 
+                        auto opCodeGetter = scopeStack_.top()->getNameGetter(varName);
+                        emit(opCodeGetter);
+
                         // 1. Local vars:
-                        auto localIndex = co->getLocalIndex(varName);
-                        if (localIndex != -1) {
-                            emit(OP_GET_LOCAL);
-                            emit(localIndex);
+                        if (opCodeGetter == OP_GET_LOCAL) {
+                            emit(co->getLocalIndex(varName));
                         }
 
                         // 2. Global vars:
+                        else if (opCodeGetter == OP_GET_CELL) {
+                            emit(co->getCellIndex(varName));
+                        }
+
+                        // 3. Global vars:
                         else {
                             if (!global->exists(varName)) {
                                 DIE << "[EvaCompiler]: Reference error: " << varName;
                             }
-                            emit(OP_GET_GLOBAL);
                             emit(global->getGlobalIndex(varName));
                         }
                     }
@@ -346,6 +351,8 @@ class EvaCompiler {
                         else if (op == "var") {
                             auto varName = exp.list[1].string;
 
+                            auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);                            
+
                             // Special treatment of (var foo (lambda ...))
                             // to capture function name from variable:
                             if (isLambda(exp.list[2])) {
@@ -359,45 +366,65 @@ class EvaCompiler {
                             }
 
                             // 1. Global vars:
-                            if (isGlobalScope()) {
+                            if (opCodeSetter == OP_SET_GLOBAL) {
                                 global->define(varName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
+                                // emit(OP_FAKE_TEST); // TODO remove
                             }
+                            // 2. Cells:
+                            else if (opCodeSetter == OP_SET_CELL) {
+                                co->cellNames.push_back(varName);
+                                emit(OP_SET_CELL);
+                                emit(co->cellNames.size()-1);
+                                // Explicitly po the value from the stack,
+                                // since it's promoted to the heap:
+                                emit(OP_POP);
+                            }
+                            // 3. Local vars:
                             else {
                                 co->addLocal(varName);
+                                // NOTE: no neet to explicitly "set" the var value, since the
+                                // initializer is already on the stack at the needed slot
                             }
                         }
 
                         else if (op == "set") {
                             auto varName = exp.list[1].string;
 
-                            // Initialization
+                            auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);
+
+                            // Value:
                             gen(exp.list[2]);
 
                             // 1. Local vars:
-                            auto localIndex = co->getLocalIndex(varName);
-
-                            if (localIndex != -1) {
+                            if (opCodeSetter == OP_SET_LOCAL) {
                                 emit(OP_SET_LOCAL);
-                                emit(localIndex);
+                                emit(co->getLocalIndex(varName));
                             }
 
-                            // 2. Global vars:  
+                            // 1. Local vars:
+                            else if (opCodeSetter == OP_SET_CELL) {
+                                emit(OP_SET_CELL);
+                                emit(co->getCellIndex(varName));
+                            }
+
+                            // 3. Global vars:  
                             else {
                                 auto globalIndex = global->getGlobalIndex(varName);
                                 if (globalIndex == -1) {
                                     DIE << "Reference error: " << varName << " is not defined.";
                                 }
                                 emit(OP_SET_GLOBAL);
-                                emit(global->getGlobalIndex(varName));
+                                emit(globalIndex);
                             }
                         }
 
                         //----------------------------------
                         // Blocks:
                         else if (op == "begin") {
-                            scopeEnter(); 
+                            scopeStack_.push(scopeInfo_.at(&exp));
+                            blockEnter(); 
 
                             // Compile each expression within the block:
                             for (auto i = 1; i<exp.list.size(); i++) {
@@ -405,18 +432,20 @@ class EvaCompiler {
                                 // on the stack as the final result
                                 bool isLast = i == exp.list.size() - 1;
 
-                                // TODO: some kinda problem here
-                                auto isLocalDeclaration =
-                                    isDeclaration(exp.list[i]) && !isGlobalScope();
+                                // Local variable or function (should NON pop);
+                                auto isDecl = isDeclaration(exp.list[i]);
 
                                 // Generate expression code;
                                 gen(exp.list[i]);
 
-                                if (!isLast && !isLocalDeclaration) {
+                                // TODO this is the thing that's causing the redundant OP_POP
+                                if (!isLast && !isDecl) {
                                     emit(OP_POP);
+                                    // emit(OP_FAKE_TEST);
                                 }
                             }
-                            scopeExit();
+                            blockExit();
+                            scopeStack_.pop();
                         }
                         //----------------------------------
                         // Function declaration (def <name> <params> <body>)
@@ -522,6 +551,9 @@ class EvaCompiler {
             const std::string fnName, 
             const Exp &params, 
             const Exp &body) {
+
+            auto scopeInfo = scopeInfo_.at(&exp);
+            scopeStack_.push(scopeInfo);
             
             auto arity = params.list.size();
 
@@ -531,6 +563,16 @@ class EvaCompiler {
             // Function code object:
             auto coValue = createCodeObjectValue(fnName, arity);
             co = AS_CODE(coValue);
+
+            // Put 'free' and 'cells' from the scope into the
+            // cellNames of the code object.
+            co->freeCount = scopeInfo->free.size();
+            co->cellNames.reserve(scopeInfo->free.size() + scopeInfo->cells.size());
+            co->cellNames.insert(co->cellNames.end(), scopeInfo->free.begin(), 
+                scopeInfo->free.end());
+            co->cellNames.insert(co->cellNames.end(), scopeInfo->cells.begin(), 
+                scopeInfo->cells.end());
+
 
             // Store new co as a constant:
             prevCo->constants.push_back(coValue);
@@ -543,6 +585,14 @@ class EvaCompiler {
             for (auto i = 0; i < arity; i++) {
                 auto argName = params.list[i].string;
                 co->addLocal(argName);
+                // NOTE: if the param is captured by cell, emit the code
+                // for it.  We also don't pop the param value in this
+                // case, since OP_SCOPE_EXIT would pop it.
+                auto cellIndex = co->getCellIndex(argName);
+                if (cellIndex != -1) {
+                    emit(OP_SET_CELL);
+                    emit(cellIndex);
+                }
             }
 
             // Compile body in the new code object:
@@ -571,6 +621,8 @@ class EvaCompiler {
             // And emit code for this new constant:
             emit(OP_CONST);
             emit(co->constants.size() - 1);
+
+            scopeStack_.pop();
         }
 
         /**
@@ -584,14 +636,14 @@ class EvaCompiler {
         }
 
         /**
-         * Enters new scope.
+         * Enters new block.
          */
-        void scopeEnter() { co->scopeLevel++; }
+        void blockEnter() { co->scopeLevel++; }
 
         /**
-         * Exits scope.
+         * Exits block.
          */
-        void scopeExit() { 
+        void blockExit() { 
             // Pop vars from the satack if they were declared
             // within this specific scope
             auto varsCount = getVarsCountOnScopeExit();
@@ -691,7 +743,12 @@ class EvaCompiler {
         /**
          *  Scope info
          */ 
-        std::map<const Exp*, std::shared_ptr<Scope>> scopeInfo_;
+        std::map<const Exp*, std::shared_ptr<Scope> > scopeInfo_;
+
+        /**
+         *  Scope stack
+         */ 
+        std::stack<std::shared_ptr<Scope>> scopeStack_;
 
         /**
          *  Compiling code object

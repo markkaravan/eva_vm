@@ -155,6 +155,7 @@ class EvaVM {
         // Debug disassembly
         compiler->disassembleBytecode();
 
+        // return NUMBER(69);
         return eval();
     }
 
@@ -163,8 +164,8 @@ class EvaVM {
      */
     EvaValue eval() {
         for(;;) {
-            // dumpStack();
             int opcode = READ_BYTE();
+            dumpStack(opcode);
             switch(opcode) {
                 case OP_HALT: {
                     return pop();
@@ -250,7 +251,7 @@ class EvaVM {
                 // TODO: error here with peek(0)/pop()
                 case OP_SET_GLOBAL: {
                     auto globalIndex = READ_BYTE();
-                    auto value = peek(0);
+                    auto value = pop();
                     global->set(globalIndex, value);
                     break;
                 }
@@ -427,8 +428,9 @@ class EvaVM {
     /**
      *  Dumps the current stack.
      */ 
-    void dumpStack() {
+    void dumpStack(uint8_t opcode) {
         std::cout << "\n-----------Stack-----------\n";
+        printTheOpCode(opcode);
         if (sp == stack.begin()) {
             std::cout << "(empty)";
         }
@@ -438,6 +440,14 @@ class EvaVM {
         }
         std::cout << "\n";
     };
+
+    void printTheOpCode(uint8_t opcode) {
+        std::ios_base::fmtflags f(std::cout.flags());
+        std::cout << "opcode: " << std::left << std::setfill(' ') << std::setw(20)
+                << opcodeToString(opcode) << " ";
+        std::cout.flags(f);
+        std::cout << std::endl << "-----" << std::endl;
+    }
 };
 
 #endif

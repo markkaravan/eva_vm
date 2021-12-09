@@ -70,9 +70,24 @@
 #define OP_CALL 0x15
 
 /**
- *  Return froma function
+ *  Return from a function
  */
 #define OP_RETURN 0x16
+
+/**
+ *  Returns a cell variable
+ */
+#define OP_GET_CELL 0x17
+
+/**
+ *  Sets a local variable value
+ */
+#define OP_SET_CELL 0x18
+
+/**
+ * Solely for testing emit()
+ */
+#define OP_FAKE_TEST 0x69
 
 //--------------------------------------
 #define OP_STR(op)      \
@@ -98,6 +113,9 @@ std::string opcodeToString(uint8_t opcode) {
        OP_STR(SCOPE_EXIT); 
        OP_STR(CALL); 
        OP_STR(RETURN); 
+       OP_STR(GET_CELL); 
+       OP_STR(SET_CELL); 
+       OP_STR(FAKE_TEST); 
        default:
             DIE << "opcodeToString: unknown opcode: " << std::hex << (int)opcode;
     }
