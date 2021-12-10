@@ -451,10 +451,10 @@ class EvaCompiler {
                                 gen(exp.list[i]);
 
                                 // TODO this is the thing that's causing the redundant OP_POP
-                                // if (!isLast && !isDecl) {
-                                //     emit(OP_POP);
-                                //     std::cout << "**** EMITTING OP_POP from compiler:455" << std::endl;
-                                //     // emit(OP_FAKE_TEST);
+                                // if (isDecl) {
+                                //     // emit(OP_POP);
+                                //     std::cout << "**** EMITTING OP_FAKE_TEST from compiler:455" << std::endl;
+                                //     emit(OP_FAKE_TEST);
                                 // }
                             }
                             blockExit();
@@ -656,18 +656,11 @@ class EvaCompiler {
             // within this specific scope
             // auto varsCount = getVarsCountOnScopeExit();
             auto varsCount = 0;
-
-            std::cout << "**** name:" << co->name << std::endl;
-            std::cout << "**** varsCount " << varsCount << std::endl;
-            std::cout << "**** scopeLevel " << co->scopeLevel << std::endl;
-
-            // for (auto it = co->locals.begin(); it != co->locals.end(); ++it) {
-            //     std::cout << it->name << ":" << it->scopeLevel << std::endl;
-            // }
-
             if (co->locals.size() > 0) {
-                while (co->locals.back().scopeLevel ==  co->scopeLevel) {
-                    std::cout << co->locals.back().name << ":" << co->locals.back().scopeLevel << ", size is now " << co->locals.size() << std::endl;
+                // TODO sometimes this will continue to find stuff in co->locals that
+                // hasn't been named
+                while (co->locals.back().name == "" 
+                    && co->locals.back().scopeLevel ==  co->scopeLevel) {
                     co->locals.pop_back();
                     varsCount++;
                 }
@@ -694,7 +687,11 @@ class EvaCompiler {
 
         bool isFunctionBody() { return co->name != "main" && co->scopeLevel == 1; }
 
-        bool isDeclaration(const Exp& exp) { return isVarDeclaration(exp); }
+        bool isDeclaration(const Exp& exp) { 
+            return isVarDeclaration(exp) || 
+                isFunctionDeclaration(exp) ||
+                isLambda(exp)
+            ; }
 
         bool isVarDeclaration(const Exp& exp) { return isTaggedList(exp, "var"); }
 
@@ -706,8 +703,9 @@ class EvaCompiler {
         bool isBlock(const Exp& exp) { return isTaggedList(exp, "begin"); }
 
         bool isTaggedList(const Exp& exp, const std::string& tag) {
-            return exp.type == ExpType::LIST && exp.list[0].type == ExpType::SYMBOL &&
-                    exp.list[0].string == tag;
+            return exp.type == ExpType::LIST 
+                && exp.list[0].type == ExpType::SYMBOL 
+                && exp.list[0].string == tag;
         }
 
         // size_t getVarsCountOnScopeExit() {

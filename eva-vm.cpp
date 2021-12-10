@@ -188,22 +188,30 @@ void runTheTests () {
     )", false));
 
     // This one yields very inconsistent segfaults wtf
-    // results.push_back(runTest(NUMBER(15), R"(
-    //     (var x 1)
-    //     (begin 
-    //         (var a 10)
-    //         (var b 20)
-    //         (begin
-    //             (var q 15)
-    //             q
-    //         ))
-    // )", false));
-
-    results.push_back(runTest(NUMBER(5), R"(
-        (var i 4)
-        (set i 5)
-        i
+    results.push_back(runTest(NUMBER(15), R"(
+        (var x 1)
+        (begin 
+            (var a 10)
+            (var b 20)
+            (begin
+                (var q 15)
+                q
+            ))
     )", false));
+
+    results.push_back(runTest(NUMBER(16), R"(
+        (var square (lambda (x) (* x x)))
+        (square 4)
+    )", false));
+
+    
+
+
+    // results.push_back(runTest(NUMBER(5), R"(
+    //     (var i 4)
+    //     (set i 5)
+    //     i
+    // )", false));
 
     // results.push_back(runTest(NUMBER(5), R"(
     //     (var i 0)
@@ -238,8 +246,7 @@ void singleTest () {
     EvaVM vm;
 
     const char* source = R"(
-        (while (== 1 2) (+ 1 2))
-        5
+        (def square (x) (* x x))
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
@@ -255,9 +262,9 @@ void singleTest () {
 
 int main(int argc, char const *argv[]) {
 
-    // runTheTests();
+    runTheTests();
 
-    singleTest();
+    //singleTest();
 
     return 0;
 };
