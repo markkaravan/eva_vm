@@ -126,6 +126,7 @@ class EvaCompiler {
                     // Variable declaration:
                     else if (op == "var") {
                         scope->addLocal(exp.list[1].string);
+                        std::cout << "*** ADDED " << exp.list[1].string << ": " << std::endl;
                         analyze(exp.list[2], scope);
                     }
 
@@ -247,24 +248,29 @@ class EvaCompiler {
                         //-----------------------------------
                         //  Binary math operations:
                         if (op == "+") {
+                            std::cout << "*** Called a native +" << std::endl;
                             GEN_BINARY_OP(OP_ADD);
                         }
 
                         else if (op == "-") {
+                            std::cout << "*** Called a native -" << std::endl;
                             GEN_BINARY_OP(OP_SUB);
                         }
 
                         else if (op == "*") {
+                            std::cout << "*** Called a native *" << std::endl;
                             GEN_BINARY_OP(OP_MUL);
                         }
 
                         else if (op == "/") {
+                            std::cout << "*** Called a native /" << std::endl;
                             GEN_BINARY_OP(OP_DIV);
                         }
 
                         //----------------------------------
                         // Compare operations: (> 5 10)
                         else if (compareOps_.count(op) != 0) {
+                            std::cout << "*** Called a native comparison" << std::endl;
                             gen(exp.list[1]);
                             gen(exp.list[2]);
                             emit(OP_COMPARE);
@@ -274,6 +280,7 @@ class EvaCompiler {
                         //----------------------------------
                         // Branch instructions:
                         else if (op == "if") {
+                            std::cout << "*** Called if" << std::endl;
                             // Emit <test>:
                             gen(exp.list[1]);
 
@@ -312,6 +319,7 @@ class EvaCompiler {
                          *  (while <test> <body>)
                          */ 
                         else if (op == "while") {
+                            std::cout << "*** Called while" << std::endl;
                             auto loopStartAddr = getOffset();
 
                             // Emit <test>:
@@ -349,6 +357,7 @@ class EvaCompiler {
                         // Variable declaration:
 
                         else if (op == "var") {
+                            std::cout << "*** Called var from 358" << std::endl;
                             auto varName = exp.list[1].string;
 
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);                            
@@ -379,6 +388,7 @@ class EvaCompiler {
                                 emit(co->cellNames.size()-1);
                                 // Explicitly po the value from the stack,
                                 // since it's promoted to the heap:
+                                std::cout << "**** EMITTING OP_POP from compiler:390" << std::endl;
                                 emit(OP_POP);
                             }
                             // 3. Local vars:
@@ -390,6 +400,7 @@ class EvaCompiler {
                         }
 
                         else if (op == "set") {
+                            std::cout << "*** Called set" << std::endl;
                             auto varName = exp.list[1].string;
 
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);
@@ -423,6 +434,7 @@ class EvaCompiler {
                         //----------------------------------
                         // Blocks:
                         else if (op == "begin") {
+                            std::cout << "*** Called begin" << std::endl;
                             scopeStack_.push(scopeInfo_.at(&exp));
                             blockEnter(); 
 
@@ -430,19 +442,20 @@ class EvaCompiler {
                             for (auto i = 1; i<exp.list.size(); i++) {
                                 // The value of the last expression is kept
                                 // on the stack as the final result
-                                bool isLast = i == exp.list.size() - 1;
+                                // bool isLast = i == exp.list.size() - 1;
 
                                 // Local variable or function (should NON pop);
-                                auto isDecl = isDeclaration(exp.list[i]);
+                                // auto isDecl = isDeclaration(exp.list[i]);
 
                                 // Generate expression code;
                                 gen(exp.list[i]);
 
                                 // TODO this is the thing that's causing the redundant OP_POP
-                                if (!isLast && !isDecl) {
-                                    emit(OP_POP);
-                                    // emit(OP_FAKE_TEST);
-                                }
+                                // if (!isLast && !isDecl) {
+                                //     emit(OP_POP);
+                                //     std::cout << "**** EMITTING OP_POP from compiler:455" << std::endl;
+                                //     // emit(OP_FAKE_TEST);
+                                // }
                             }
                             blockExit();
                             scopeStack_.pop();
@@ -453,6 +466,7 @@ class EvaCompiler {
                         // Sugar for: (var <name> (lambda <params> <body>))
 
                         else if (op == "def") {
+                            std::cout << "*** Called def" << std::endl;
                             auto fnName = exp.list[1].string;
                             compileFunction(
                                 /* exp */       exp,
@@ -462,6 +476,7 @@ class EvaCompiler {
 
                             // Define the function as a variable in our co:
                             if (isGlobalScope()) {
+                                std::cout << "**** This IS globalscope" << std::endl;
                                 global->define(fnName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(fnName));
@@ -477,6 +492,7 @@ class EvaCompiler {
                         //
                         // (lambda (a b) (+ a b))
                         else if (op == "lambda") {
+                            std::cout << "*** Called lambda" << std::endl;
                             compileFunction(
                                 /* exp */       exp,
                                 /* name */      "lambda",
@@ -487,19 +503,10 @@ class EvaCompiler {
                         //----------------------------------
                         // Function calls:
                         else {
+                            std::cout << "*** Called function calls" << std::endl;
+
                             // Named function calls
                             FUNCTION_CALL(exp);
-
-                            // Push function onto the stack:
-                            gen(exp.list[0]);
-
-                            // Arguments:
-                            for (auto i=1; i < exp.list.size(); i++) {
-                                gen(exp.list[i]);
-                            }
-
-                            emit(OP_CALL);
-                            emit(exp.list.size() - 1);
                         }
                     }
                     //----------------------------------
@@ -509,6 +516,7 @@ class EvaCompiler {
 
                     //if (tag.type == ExpType::SYMBOL) {
                     else {
+                        std::cout << "*** Called not a symbol" << std::endl;
                         // Inline lambda call.
                         FUNCTION_CALL(exp);
                     }
@@ -644,9 +652,26 @@ class EvaCompiler {
          * Exits block.
          */
         void blockExit() { 
-            // Pop vars from the satack if they were declared
+            // Pop vars from the stack if they were declared
             // within this specific scope
-            auto varsCount = getVarsCountOnScopeExit();
+            // auto varsCount = getVarsCountOnScopeExit();
+            auto varsCount = 0;
+
+            std::cout << "**** name:" << co->name << std::endl;
+            std::cout << "**** varsCount " << varsCount << std::endl;
+            std::cout << "**** scopeLevel " << co->scopeLevel << std::endl;
+
+            // for (auto it = co->locals.begin(); it != co->locals.end(); ++it) {
+            //     std::cout << it->name << ":" << it->scopeLevel << std::endl;
+            // }
+
+            if (co->locals.size() > 0) {
+                while (co->locals.back().scopeLevel ==  co->scopeLevel) {
+                    std::cout << co->locals.back().name << ":" << co->locals.back().scopeLevel << ", size is now " << co->locals.size() << std::endl;
+                    co->locals.pop_back();
+                    varsCount++;
+                }
+            }
 
             if (varsCount > 0 || co->arity > 0) {
                 emit(OP_SCOPE_EXIT);
@@ -685,17 +710,17 @@ class EvaCompiler {
                     exp.list[0].string == tag;
         }
 
-        size_t getVarsCountOnScopeExit() {
-            auto varsCount = 0;
+        // size_t getVarsCountOnScopeExit() {
+        //     auto varsCount = 0;
 
-            if (co->locals.size() > 0) {
-                while (co->locals.back().scopeLevel ==  co->scopeLevel) {
-                    co->locals.pop_back();
-                    varsCount++;
-                }
-            }
-            return varsCount;
-        }
+        //     if (co->locals.size() > 0) {
+        //         while (co->locals.back().scopeLevel ==  co->scopeLevel) {
+        //             co->locals.pop_back();
+        //             varsCount++;
+        //         }
+        //     }
+        //     return varsCount;
+        // }
 
         size_t getOffset() { return  co->code.size(); }
 
