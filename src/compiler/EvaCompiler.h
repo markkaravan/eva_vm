@@ -126,7 +126,6 @@ class EvaCompiler {
                     // Variable declaration:
                     else if (op == "var") {
                         scope->addLocal(exp.list[1].string);
-                        std::cout << "*** ADDED " << exp.list[1].string << ": " << std::endl;
                         analyze(exp.list[2], scope);
                     }
 
@@ -266,7 +265,6 @@ class EvaCompiler {
                         //----------------------------------
                         // Compare operations: (> 5 10)
                         else if (compareOps_.count(op) != 0) {
-                            std::cout << "*** Called a native comparison" << std::endl;
                             gen(exp.list[1]);
                             gen(exp.list[2]);
                             emit(OP_COMPARE);
@@ -276,7 +274,6 @@ class EvaCompiler {
                         //----------------------------------
                         // Branch instructions:
                         else if (op == "if") {
-                            std::cout << "*** Called if" << std::endl;
                             // Emit <test>:
                             gen(exp.list[1]);
 
@@ -315,7 +312,6 @@ class EvaCompiler {
                          *  (while <test> <body>)
                          */ 
                         else if (op == "while") {
-                            std::cout << "*** Called while" << std::endl;
                             auto loopStartAddr = getOffset();
 
                             // Emit <test>:
@@ -353,7 +349,6 @@ class EvaCompiler {
                         // Variable declaration:
 
                         else if (op == "var") {
-                            std::cout << "*** Called var from 358" << std::endl;
                             auto varName = exp.list[1].string;
 
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);                            
@@ -386,7 +381,6 @@ class EvaCompiler {
                                 emit(co->cellNames.size()-1);
                                 // Explicitly po the value from the stack,
                                 // since it's promoted to the heap:
-                                std::cout << "**** EMITTING OP_POP from compiler:390" << std::endl;
                                 emit(OP_POP);
                             }
                             // 3. Local vars:
@@ -398,7 +392,6 @@ class EvaCompiler {
                         }
 
                         else if (op == "set") {
-                            std::cout << "*** Called set" << std::endl;
                             auto varName = exp.list[1].string;
 
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);
@@ -434,7 +427,6 @@ class EvaCompiler {
                         //----------------------------------
                         // Blocks:
                         else if (op == "begin") {
-                            std::cout << "*** Called begin" << std::endl;
                             scopeStack_.push(scopeInfo_.at(&exp));
                             blockEnter(); 
 
@@ -450,18 +442,8 @@ class EvaCompiler {
                                 // Generate expression code;
                                 gen(exp.list[i]);
 
-                                // TODO this is the thing that's causing the redundant OP_POP
-                                // REMOVE THE POP if isGlobalDecl() and isLast()
-                                if (isDecl) {
-                                    std::cout << "==== IS DECL" << std::endl;
-                                }
-
-                                if (isLast) {
-                                    std::cout << "==== IS LAST" << std::endl;
-                                }
-
+                                // TODO this is a monkey patch
                                 if (isLast && isDecl) {
-                                    std::cout << "==== WE'RE POPPING THIS BITCH" << std::endl;
                                     co->code.pop_back();
                                 }
                             }
@@ -474,7 +456,6 @@ class EvaCompiler {
                         // Sugar for: (var <name> (lambda <params> <body>))
 
                         else if (op == "def") {
-                            std::cout << "*** Called def" << std::endl;
                             auto fnName = exp.list[1].string;
                             compileFunction(
                                 /* exp */       exp,
@@ -484,7 +465,6 @@ class EvaCompiler {
 
                             // Define the function as a variable in our co:
                             if (isGlobalScope()) {
-                                std::cout << "**** This IS globalscope" << std::endl;
                                 global->define(fnName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(fnName));
@@ -502,7 +482,6 @@ class EvaCompiler {
                         //
                         // (lambda (a b) (+ a b))
                         else if (op == "lambda") {
-                            std::cout << "*** Called lambda" << std::endl;
                             compileFunction(
                                 /* exp */       exp,
                                 /* name */      "lambda",
@@ -513,8 +492,6 @@ class EvaCompiler {
                         //----------------------------------
                         // Function calls:
                         else {
-                            std::cout << "*** Called function calls" << std::endl;
-
                             // Named function calls
                             FUNCTION_CALL(exp);
                         }
@@ -526,7 +503,6 @@ class EvaCompiler {
 
                     //if (tag.type == ExpType::SYMBOL) {
                     else {
-                        std::cout << "*** Called not a symbol" << std::endl;
                         // Inline lambda call.
                         FUNCTION_CALL(exp);
                     }

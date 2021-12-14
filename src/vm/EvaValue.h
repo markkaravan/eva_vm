@@ -130,10 +130,6 @@ struct CodeObject : public Object {
      */ 
     void addLocal(const std::string& name) {
         locals.push_back({name, scopeLevel});
-        std::cout << "**** ADDED LOCAL: " << name 
-            << " at scope level " << scopeLevel 
-            << ", locals is now size: " << locals.size()
-            << std::endl;
         showLocals();
     }
 

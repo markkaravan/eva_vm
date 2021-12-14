@@ -222,9 +222,9 @@ void runTheTests () {
     )", false));
 
 
-    // results.push_back(runTest(ALLOC_FUNCTION(co), R"(
-    //     (def square (x) (* x x))
-    // )", false));
+    results.push_back(runTest(NUMBER(6), R"(
+        (def square (x) (* x x))
+    )", false));
 
 
     // This one doesn't work.
