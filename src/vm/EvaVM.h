@@ -252,7 +252,8 @@ class EvaVM {
                 case OP_SET_GLOBAL: {
                     auto globalIndex = READ_BYTE();
                 // TODO: should become pop() for some reason
-                    auto value = pop();
+                    //auto value = pop();
+                    auto value = peek(0);
                     global->set(globalIndex, value);
                     break;
                 }

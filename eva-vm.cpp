@@ -215,6 +215,18 @@ void runTheTests () {
         (square 4)
     )", false));
 
+    results.push_back(runTest(NUMBER(5), R"(
+        (var i 4)
+        (set i 5)
+        i
+    )", false));
+
+
+    // results.push_back(runTest(ALLOC_FUNCTION(co), R"(
+    //     (def square (x) (* x x))
+    // )", false));
+
+
     // This one doesn't work.
     // Declarations are automatically popped from the stack
     // in OP_SET_GLOBAL in the vm
@@ -222,12 +234,6 @@ void runTheTests () {
     // results.push_back(runTest(NUMBER(16), R"(
     //     (def square (x) (* x x))
     // )", false));
-
-    results.push_back(runTest(NUMBER(5), R"(
-        (var i 4)
-        (set i 5)
-        i
-    )", false));
 
     // results.push_back(runTest(NUMBER(5), R"(
     //     (var i 0)
@@ -262,14 +268,7 @@ void singleTest () {
     EvaVM vm;
 
     const char* source = R"(
-        (var i 0)
-        (var total 0)
-        (while 
-            (< i 10)
-            (begin 
-                (set i (+ i 1))
-                (set total (+ total 1))))
-        total
+        // (def square (x) (* x x))
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;

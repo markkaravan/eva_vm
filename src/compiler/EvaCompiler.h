@@ -248,22 +248,18 @@ class EvaCompiler {
                         //-----------------------------------
                         //  Binary math operations:
                         if (op == "+") {
-                            std::cout << "*** Called a native +" << std::endl;
                             GEN_BINARY_OP(OP_ADD);
                         }
 
                         else if (op == "-") {
-                            std::cout << "*** Called a native -" << std::endl;
                             GEN_BINARY_OP(OP_SUB);
                         }
 
                         else if (op == "*") {
-                            std::cout << "*** Called a native *" << std::endl;
                             GEN_BINARY_OP(OP_MUL);
                         }
 
                         else if (op == "/") {
-                            std::cout << "*** Called a native /" << std::endl;
                             GEN_BINARY_OP(OP_DIV);
                         }
 
@@ -380,6 +376,8 @@ class EvaCompiler {
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
                                 // emit(OP_FAKE_TEST); // TODO remove
+                                // TODO TESTING, WILL REMOVE
+                                emit(OP_POP);
                             }
                             // 2. Cells:
                             else if (opCodeSetter == OP_SET_CELL) {
@@ -428,6 +426,8 @@ class EvaCompiler {
                                 }
                                 emit(OP_SET_GLOBAL);
                                 emit(globalIndex);
+                                // TODO TESTING, WILL REMOVE
+                                emit(OP_POP);
                             }
                         }
 
@@ -442,20 +442,28 @@ class EvaCompiler {
                             for (auto i = 1; i<exp.list.size(); i++) {
                                 // The value of the last expression is kept
                                 // on the stack as the final result
-                                // bool isLast = i == exp.list.size() - 1;
+                                bool isLast = i == exp.list.size() - 1;
 
                                 // Local variable or function (should NON pop);
-                                // auto isDecl = isDeclaration(exp.list[i]);
+                                auto isDecl = isDeclaration(exp.list[i]);
 
                                 // Generate expression code;
                                 gen(exp.list[i]);
 
                                 // TODO this is the thing that's causing the redundant OP_POP
-                                // if (isDecl) {
-                                //     // emit(OP_POP);
-                                //     std::cout << "**** EMITTING OP_FAKE_TEST from compiler:455" << std::endl;
-                                //     emit(OP_FAKE_TEST);
-                                // }
+                                // REMOVE THE POP if isGlobalDecl() and isLast()
+                                if (isDecl) {
+                                    std::cout << "==== IS DECL" << std::endl;
+                                }
+
+                                if (isLast) {
+                                    std::cout << "==== IS LAST" << std::endl;
+                                }
+
+                                if (isLast && isDecl) {
+                                    std::cout << "==== WE'RE POPPING THIS BITCH" << std::endl;
+                                    co->code.pop_back();
+                                }
                             }
                             blockExit();
                             scopeStack_.pop();
@@ -480,6 +488,8 @@ class EvaCompiler {
                                 global->define(fnName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(fnName));
+                                // TODO TESTING, WILL REMOVE
+                                emit(OP_POP);
                             } else {
                                 co->addLocal(fnName);
                                 // No need to set explicit "set" the var value
