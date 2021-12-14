@@ -199,19 +199,35 @@ void runTheTests () {
             ))
     )", false));
 
+    results.push_back(runTest(NUMBER(25), R"(
+        (var x 1)
+        (begin 
+            (var a 10)
+            (var b 20)
+            (begin
+                (var q 15)
+                (+ a q)
+            ))
+    )", false));
+
     results.push_back(runTest(NUMBER(16), R"(
         (var square (lambda (x) (* x x)))
         (square 4)
     )", false));
 
-    
-
-
-    // results.push_back(runTest(NUMBER(5), R"(
-    //     (var i 4)
-    //     (set i 5)
-    //     i
+    // This one doesn't work.
+    // Declarations are automatically popped from the stack
+    // in OP_SET_GLOBAL in the vm
+    // this happened in Lecture 20: Bytecode optimizations 
+    // results.push_back(runTest(NUMBER(16), R"(
+    //     (def square (x) (* x x))
     // )", false));
+
+    results.push_back(runTest(NUMBER(5), R"(
+        (var i 4)
+        (set i 5)
+        i
+    )", false));
 
     // results.push_back(runTest(NUMBER(5), R"(
     //     (var i 0)
@@ -246,7 +262,14 @@ void singleTest () {
     EvaVM vm;
 
     const char* source = R"(
-        (def square (x) (* x x))
+        (var i 0)
+        (var total 0)
+        (while 
+            (< i 10)
+            (begin 
+                (set i (+ i 1))
+                (set total (+ total 1))))
+        total
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
