@@ -352,6 +352,7 @@ class EvaCompiler {
 
                         else if (op == "var") {
                             auto varName = exp.list[1].string;
+                            std::cout << "In varName: " << varName << std::endl;
 
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);                            
 
@@ -369,24 +370,29 @@ class EvaCompiler {
 
                             // 1. Global vars:
                             if (opCodeSetter == OP_SET_GLOBAL) {
+                                std::cout << "^GLOBAL:  " << varName << std::endl;
                                 global->define(varName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
-                                // emit(OP_FAKE_TEST); // TODO remove
                                 // TODO TESTING, WILL REMOVE
                                 emit(OP_POP);
                             }
                             // 2. Cells:
                             else if (opCodeSetter == OP_SET_CELL) {
+                                std::cout << "^ CELL " << varName << std::endl;
                                 co->cellNames.push_back(varName);
                                 emit(OP_SET_CELL);
+                                showCellNames();
+                                std::cout << co->cellNames.size()-1 << std::endl;
                                 emit(co->cellNames.size()-1);
+
                                 // Explicitly po the value from the stack,
                                 // since it's promoted to the heap:
                                 emit(OP_POP);
                             }
                             // 3. Local vars:
                             else {
+                                std::cout << "^ LOCAL "<< varName << std::endl;
                                 co->addLocal(varName);
                                 // NOTE: no neet to explicitly "set" the var value, since the
                                 // initializer is already on the stack at the needed slot
@@ -431,7 +437,7 @@ class EvaCompiler {
                         else if (op == "begin") {
                             scopeStack_.push(scopeInfo_.at(&exp));
                             blockEnter(); 
-
+                            std::cout << "INSIDE BEGIN" << std::endl;
                             // Compile each expression within the block:
                             for (auto i = 1; i<exp.list.size(); i++) {
                                 // The value of the last expression is kept
@@ -605,18 +611,55 @@ class EvaCompiler {
             // Explicit return to restore caller address.
             emit(OP_RETURN);
 
-            // Create the function:
-            auto fn = ALLOC_FUNCTION(co);
+            // 1. Simple functions (allocated at compile time)
+            // If it's not a closure (i.e. this function doesn't 
+            // have free variables), allocate it at compile time
+            // and store as a constant.  Closure are allocated at
+            // runtime, but reuse the same code object.
 
-            // Restore the code object:
-            co = prevCo;
+            if  (scopeInfo->free.size() == 0) {
+                // Create the function:
+                auto fn = ALLOC_FUNCTION(co);
 
-            // Add function as a constant to our co:
-            co->addConst(fn);
+                // Restore the code object:
+                co = prevCo;
 
-            // And emit code for this new constant:
-            emit(OP_CONST);
-            emit(co->constants.size() - 1);
+                // Add function as a constant to our co:
+                co->addConst(fn);
+
+                // And emit code for this new constant:
+                emit(OP_CONST);
+                emit(co->constants.size() - 1);
+            }
+
+            // Closures:
+            //
+            // 1. Load all free vars to capture (indices are taken
+            //    from the cells of the parent co)
+            //
+            // 2. Load code object for the current function
+            //
+            // 3. Make function
+
+            else {
+                // Restore the code object:
+                co = prevCo;
+
+                for (const auto& freeVar : scopeInfo->free) {
+                    emit(OP_LOAD_CELL);
+                    emit(prevCo->getCellIndex(freeVar));
+                }
+
+                // Load code object:
+                emit(OP_CONST);
+                emit(co->constants.size() - 1);
+
+                // Create the function
+                emit(OP_MAKE_FUNCTION);
+
+                // How many cells to capture
+                emit(scopeInfo->free.size());
+            }
 
             scopeStack_.pop();
         }
@@ -642,13 +685,9 @@ class EvaCompiler {
         void blockExit() { 
             // Pop vars from the stack if they were declared
             // within this specific scope
-            // auto varsCount = getVarsCountOnScopeExit();
             auto varsCount = 0;
             if (co->locals.size() > 0) {
-                // TODO sometimes this will continue to find stuff in co->locals that
-                // hasn't been named
-                while (co->locals.back().name == "" 
-                    && co->locals.back().scopeLevel ==  co->scopeLevel) {
+                while (co->locals.back().scopeLevel ==  co->scopeLevel) {
                     co->locals.pop_back();
                     varsCount++;
                 }
@@ -780,6 +819,17 @@ class EvaCompiler {
          *  Comparison map
          */ 
         static std::map<std::string, uint8_t> compareOps_;
+
+        void showCellNames() {
+            std::cout << "========" << std::endl 
+                << "SHOWING co->cellNames" << std::endl;
+            auto itr1 = co->cellNames.begin();
+            auto itr2 = co->cellNames.end();
+            for (auto itr = itr1; itr<itr2; ++itr) {
+                std::cout << *itr << std::endl;
+            }
+            std::cout << "========" << std::endl; 
+        };
 };
 
 std::map<std::string, uint8_t> EvaCompiler::compareOps_ = {

@@ -9,7 +9,20 @@ void singleTest () {
     EvaVM vm;
 
     const char* source = R"(
-        (+ 2 3)
+        (var x 10)
+        (def foo () x)
+        (begin 
+            (var y 100) // y: cell
+            (var q 300) // q: local
+            q           // compilation error: should POP after
+            (+ y x)     // compilation error: should POP after
+            (begin
+                (var z 200)
+                z       // compilation error: should POP after
+                (def bar () (+ y z))
+                (bar)))     // compilation error: should SCOPE_EXIT twice
+
+
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
@@ -25,9 +38,9 @@ void singleTest () {
 
 int main(int argc, char const *argv[]) {
 
-    //runTheTests();
+    runTheTests();
 
-    singleTest();
+    //singleTest();
 
     return 0;
 };

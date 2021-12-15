@@ -85,9 +85,15 @@
 #define OP_SET_CELL 0x18
 
 /**
- * Solely for testing emit()
+ *  Loads a cell onto the stack
  */
-#define OP_FAKE_TEST 0x69
+#define OP_LOAD_CELL 0x19
+
+/**
+ *  Makes a function
+ */
+#define OP_MAKE_FUNCTION 0x20
+
 
 //--------------------------------------
 #define OP_STR(op)      \
@@ -115,7 +121,8 @@ std::string opcodeToString(uint8_t opcode) {
        OP_STR(RETURN); 
        OP_STR(GET_CELL); 
        OP_STR(SET_CELL); 
-       OP_STR(FAKE_TEST); 
+       OP_STR(LOAD_CELL); 
+       OP_STR(MAKE_FUNCTION); 
        default:
             DIE << "opcodeToString: unknown opcode: " << std::hex << (int)opcode;
     }

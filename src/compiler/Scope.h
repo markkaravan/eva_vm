@@ -36,6 +36,31 @@ struct Scope {
           parent(parent) {}
 
     /**
+     * Scope type
+     */
+    ScopeType type;
+
+    /**
+     * Parent scope
+     */
+    std::shared_ptr<Scope> parent;
+
+    /**
+     * Allocation info
+     */
+    std::map<std::string, AllocType> allocInfo;
+
+    /**
+     * Set of free vars
+     */
+    std::set<std::string> free;
+
+    /**
+     * Set of own cells
+     */
+    std::set<std::string> cells;
+
+    /**
      * Registers a local
      */
     void addLocal(const std::string& name) {
@@ -66,6 +91,11 @@ struct Scope {
 
         if (allocInfo.count(name) != 0) {
             initAllocType = allocInfo[name];
+        }
+
+        // If already promoted
+        if (initAllocType == AllocType::CELL) {
+            return;
         }
 
         auto [ownerScope, allocType] = resolve(name, initAllocType);
@@ -148,33 +178,6 @@ struct Scope {
                 return OP_SET_CELL;
         }
     }
-
-
-
-    /**
-     * Scope type
-     */
-    ScopeType type;
-
-    /**
-     * Parent scope
-     */
-    std::shared_ptr<Scope> parent;
-
-    /**
-     * Allocation info
-     */
-    std::map<std::string, AllocType> allocInfo;
-
-    /**
-     * Set of free vars
-     */
-    std::set<std::string> free;
-
-    /**
-     * Set of own cells
-     */
-    std::set<std::string> cells;
 
 };
 
