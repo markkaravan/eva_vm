@@ -9,7 +9,7 @@ void singleTest () {
     EvaVM vm;
 
     const char* source = R"(
-        // (def square (x) (* x x))
+        (+ 2 3)
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
@@ -25,9 +25,9 @@ void singleTest () {
 
 int main(int argc, char const *argv[]) {
 
-    runTheTests();
+    //runTheTests();
 
-    //singleTest();
+    singleTest();
 
     return 0;
 };

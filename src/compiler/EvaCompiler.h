@@ -317,7 +317,7 @@ class EvaCompiler {
                             // Emit <test>:
                             gen(exp.list[1]);
 
-                            // Lop end.  Init with 0 address, will be patched
+                            // Loop end.  Init with 0 address, will be patched
                             emit(OP_JMP_IF_FALSE);
                             // NOTE: we use 2-byte addresses:
                             emit(0);
@@ -334,15 +334,17 @@ class EvaCompiler {
                             patchJumpAddress(getOffset() - 2, loopStartAddr);
 
                             // Patch the end
-                            auto loopEndAddr =  getOffset() + 1;
+                            auto loopEndAddr =  getOffset();
                             patchJumpAddress(loopEndJmpAddr, loopEndAddr);
 
                         }
 
                         //----------------------------------
                         // For loop:
-
-                        // TODO: see end of while loop video
+                        else if (op == "for") {
+                            
+                        }
+                        
 
 
                         //----------------------------------

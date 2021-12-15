@@ -235,6 +235,27 @@ void runTheTests () {
         )", false));
     }
 
+    results.push_back(runTest(NUMBER(10), R"(
+        (var i 0)
+        (var count 0)
+        (while (< i 10)
+            (begin
+                (set i (+ i 1))
+                (set count (+ count 1))))
+        count
+    )", false));
+
+    results.push_back(runTest(NUMBER(120), R"(
+        (def factorial (x)
+            (if (==  x 1)
+                1
+                (* x (factorial (- x 1)))))
+
+        (factorial 5)
+    )", false));
+
+
+
 
     // results.push_back(runTest(NUMBER(5), R"(
     //     (var i 0)
