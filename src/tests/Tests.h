@@ -256,19 +256,20 @@ void runTheTests () {
         (factorial 5)
     )", false));
 
-
-
-
-    // results.push_back(runTest(NUMBER(5), R"(
-    //     (var i 0)
-    //     (var total 0)
-    //     (while 
-    //         (< i 10)
-    //         (begin 
-    //             (set i (+ i 1))
-    //             (set total (+ total 1))))
-    //     total
-    // )", false));
+    results.push_back(runTest(NUMBER(300), R"(
+        (var x 10)
+        (def foo () x)
+        (begin 
+            (var y 100) 
+            (var q 7) 
+            q           
+            (+ y x)     
+            (begin
+                (var z 200)
+                z      
+                (def bar () (+ y z))
+                (bar)))
+    )", false));
 
 
     std::cout << "=============================" << std::endl

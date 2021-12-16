@@ -251,6 +251,7 @@ class EvaVM {
                 // TODO: error here with peek(0)/pop()
                 case OP_SET_GLOBAL: {
                     auto globalIndex = READ_BYTE();
+                    std::cout << "OP SET GLOBAL: " << globalIndex << std::endl;
                 // TODO: should become pop() for some reason
                     //auto value = pop();
                     auto value = peek(0);
@@ -266,7 +267,10 @@ class EvaVM {
 
                 // Local variable value
                 case OP_GET_LOCAL: {
+
+                    std::cout << "PRE GET LOCAL " << unsigned(*ip) << std::endl; 
                     auto localIndex = READ_BYTE();
+                    std::cout << "OP GET LOCAL: " << unsigned(localIndex) << ",  so it goes " << std::endl;
                     if (localIndex < 0 || localIndex >= stack.size()) {
                         DIE << "OP_GET_LOCAL: invalid variabel index: " << (int)localIndex;
                     }

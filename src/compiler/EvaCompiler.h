@@ -337,14 +337,7 @@ class EvaCompiler {
                             auto loopEndAddr =  getOffset();
                             patchJumpAddress(loopEndJmpAddr, loopEndAddr);
 
-                        }
-
-                        //----------------------------------
-                        // For loop:
-                        else if (op == "for") {
-                            
-                        }
-                        
+                        }                        
 
 
                         //----------------------------------
@@ -352,8 +345,6 @@ class EvaCompiler {
 
                         else if (op == "var") {
                             auto varName = exp.list[1].string;
-                            std::cout << "In varName: " << varName << std::endl;
-
                             auto opCodeSetter = scopeStack_.top()->getNameSetter(varName);                            
 
                             // Special treatment of (var foo (lambda ...))
@@ -370,7 +361,6 @@ class EvaCompiler {
 
                             // 1. Global vars:
                             if (opCodeSetter == OP_SET_GLOBAL) {
-                                std::cout << "^GLOBAL:  " << varName << std::endl;
                                 global->define(varName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
@@ -379,11 +369,9 @@ class EvaCompiler {
                             }
                             // 2. Cells:
                             else if (opCodeSetter == OP_SET_CELL) {
-                                std::cout << "^ CELL " << varName << std::endl;
                                 co->cellNames.push_back(varName);
                                 emit(OP_SET_CELL);
-                                showCellNames();
-                                std::cout << co->cellNames.size()-1 << std::endl;
+                                //showCellNames();
                                 emit(co->cellNames.size()-1);
 
                                 // Explicitly po the value from the stack,
@@ -392,7 +380,6 @@ class EvaCompiler {
                             }
                             // 3. Local vars:
                             else {
-                                std::cout << "^ LOCAL "<< varName << std::endl;
                                 co->addLocal(varName);
                                 // NOTE: no neet to explicitly "set" the var value, since the
                                 // initializer is already on the stack at the needed slot
@@ -428,7 +415,7 @@ class EvaCompiler {
                                 emit(OP_SET_GLOBAL);
                                 emit(globalIndex);
                                 // TODO TESTING, WILL REMOVE
-                                emit(OP_POP);
+                                //emit(OP_POP);
                             }
                         }
 
@@ -437,7 +424,6 @@ class EvaCompiler {
                         else if (op == "begin") {
                             scopeStack_.push(scopeInfo_.at(&exp));
                             blockEnter(); 
-                            std::cout << "INSIDE BEGIN" << std::endl;
                             // Compile each expression within the block:
                             for (auto i = 1; i<exp.list.size(); i++) {
                                 // The value of the last expression is kept
@@ -451,7 +437,21 @@ class EvaCompiler {
                                 gen(exp.list[i]);
 
                                 // TODO this is a monkey patch
+                                // OP_POP is called by default; we remove the 
+                                // instruction from co->code in the event that the last
+                                // thing meets these conditions
+                                // if (isLast && isDecl) {
+                                //     std::cout << "*** POP THAT MOFO" << std::endl;
+                                //     co->code.pop_back();
+                                // }
+                                std::cout << "isLast: " << isLast << ", isDecl: " << isDecl << std::endl;
+                                if (!isLast && !isDecl) {
+                                    std::cout << "WE POPPIN" << std::endl;
+                                    emit(OP_POP);
+                                }
+
                                 if (isLast && isDecl) {
+                                    std::cout << "*** POP THAT MOFO" << std::endl;
                                     co->code.pop_back();
                                 }
                             }

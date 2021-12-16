@@ -13,7 +13,7 @@ void singleTest () {
         (def foo () x)
         (begin 
             (var y 100) // y: cell
-            (var q 300) // q: local
+            (var q 7) // q: local
             q           // compilation error: should POP after
             (+ y x)     // compilation error: should POP after
             (begin
@@ -23,6 +23,12 @@ void singleTest () {
                 (bar)))     // compilation error: should SCOPE_EXIT twice
 
 
+        // (def factorial (x)
+        //     (if (==  x 1)
+        //         1
+        //         (* x (factorial (- x 1)))))
+
+        // (factorial 5)
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
