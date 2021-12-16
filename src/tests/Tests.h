@@ -4,7 +4,6 @@
 struct TestCase {
     EvaValue expectedResult;
     const char* testProgram;
-    // bool showDisassembler;
     bool showStackDump;
 };
 

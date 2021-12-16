@@ -133,7 +133,7 @@ class EvaVM {
             sp -= count;
         }
 
-    EvaValue exec(const std::string &program) {
+    EvaValue exec(const std::string &program, bool showDisassembler=true, bool showStacks=true)  {
         // 1. Parse to AST
         auto ast = parser->parse("(begin " + program + ")");
 
@@ -153,19 +153,23 @@ class EvaVM {
         bp = sp;
 
         // Debug disassembly
-        compiler->disassembleBytecode();
+        if (showDisassembler) {
+            compiler->disassembleBytecode();
+        }
 
         //return NUMBER(69);
-        return eval();
+        return eval(showStacks);
     }
 
     /**
      * Main Eval Loop
      */
-    EvaValue eval() {
+    EvaValue eval(bool showStacks=true ) {
         for(;;) {
             int opcode = READ_BYTE();
-            dumpStack(opcode);
+            if (showStacks) {
+                dumpStack(opcode);
+            }
             switch(opcode) {
                 case OP_HALT: {
                     return pop();

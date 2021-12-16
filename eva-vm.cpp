@@ -5,7 +5,7 @@
 #include "src/tests/Tests.h"
 
 
-void singleTest () {
+void singleTest (bool showDisassembler, bool showStacks) {
     EvaVM vm;
 
     const char* source = R"(
@@ -32,7 +32,7 @@ void singleTest () {
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
-    auto result = vm.exec(source);
+    auto result = vm.exec(source, showDisassembler, showStacks);
 
     std::cout << "====================" << std::endl << " This is the final stack: " << std::endl;
     vm.dumpStack(0);
@@ -46,7 +46,9 @@ int main(int argc, char const *argv[]) {
 
     //runTheTests();
 
-    singleTest();
+    bool showDisassembler = false;
+    bool showStacks = false;
+    singleTest(showDisassembler, showStacks);
 
     return 0;
 };
