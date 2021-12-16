@@ -196,7 +196,7 @@ void runTheTests () {
         (square 3)
     )", false));
 
-    // This one yields very inconsistent segfaults 
+    //This one yields very inconsistent segfaults 
     // results.push_back(runTest(NUMBER(15), R"(
     //     (var x 1)
     //     (begin 

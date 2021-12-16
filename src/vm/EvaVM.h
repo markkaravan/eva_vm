@@ -224,7 +224,7 @@ class EvaVM {
 
                 // Conditional jump:
                 case OP_JMP_IF_FALSE: {
-                    auto cond = AS_BOOLEAN(pop()); // TODO: to boolean, 0->false etc
+                    auto cond = AS_BOOLEAN(pop());
 
                     auto address = READ_SHORT();
 
@@ -248,12 +248,9 @@ class EvaVM {
                     break;
                 }
 
-                // TODO: error here with peek(0)/pop()
+                // Global variable setting
                 case OP_SET_GLOBAL: {
                     auto globalIndex = READ_BYTE();
-                    std::cout << "OP SET GLOBAL: " << globalIndex << std::endl;
-                // TODO: should become pop() for some reason
-                    //auto value = pop();
                     auto value = peek(0);
                     global->set(globalIndex, value);
                     break;
@@ -267,10 +264,7 @@ class EvaVM {
 
                 // Local variable value
                 case OP_GET_LOCAL: {
-
-                    std::cout << "PRE GET LOCAL " << unsigned(*ip) << std::endl; 
                     auto localIndex = READ_BYTE();
-                    std::cout << "OP GET LOCAL: " << unsigned(localIndex) << ",  so it goes " << std::endl;
                     if (localIndex < 0 || localIndex >= stack.size()) {
                         DIE << "OP_GET_LOCAL: invalid variabel index: " << (int)localIndex;
                     }
@@ -374,7 +368,7 @@ class EvaVM {
                         break;
                     }
 
-                    // 2. User-defined function TODO
+                    // 2. User-defined function 
                     auto callee = AS_FUNCTION(fnValue);
 
                     // save execution context, restored on OP_RETURN

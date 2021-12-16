@@ -23,12 +23,12 @@ void singleTest () {
                 (bar)))     // compilation error: should SCOPE_EXIT twice
 
 
-        // (def factorial (x)
-        //     (if (==  x 1)
-        //         1
-        //         (* x (factorial (- x 1)))))
+        (def factorial (x)
+            (if (==  x 1)
+                1
+                (* x (factorial (- x 1)))))
 
-        // (factorial 5)
+        (factorial 5)
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
@@ -44,9 +44,9 @@ void singleTest () {
 
 int main(int argc, char const *argv[]) {
 
-    runTheTests();
+    //runTheTests();
 
-    //singleTest();
+    singleTest();
 
     return 0;
 };

@@ -54,11 +54,6 @@ class EvaCompiler {
             : global(global),
               disassembler(std::make_unique<EvaDisassembler>(global)) {}
 
-        // TODO: replace w/unique pointer
-        // EvaDisassembler* disassembler = new EvaDisassembler();
-
-
-
         /**
          *  Main compile API
          */ 
@@ -364,7 +359,6 @@ class EvaCompiler {
                                 global->define(varName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(varName));
-                                // TODO TESTING, WILL REMOVE
                                 emit(OP_POP);
                             }
                             // 2. Cells:
@@ -414,8 +408,6 @@ class EvaCompiler {
                                 }
                                 emit(OP_SET_GLOBAL);
                                 emit(globalIndex);
-                                // TODO TESTING, WILL REMOVE
-                                //emit(OP_POP);
                             }
                         }
 
@@ -440,18 +432,11 @@ class EvaCompiler {
                                 // OP_POP is called by default; we remove the 
                                 // instruction from co->code in the event that the last
                                 // thing meets these conditions
-                                // if (isLast && isDecl) {
-                                //     std::cout << "*** POP THAT MOFO" << std::endl;
-                                //     co->code.pop_back();
-                                // }
-                                std::cout << "isLast: " << isLast << ", isDecl: " << isDecl << std::endl;
                                 if (!isLast && !isDecl) {
-                                    std::cout << "WE POPPIN" << std::endl;
                                     emit(OP_POP);
                                 }
 
                                 if (isLast && isDecl) {
-                                    std::cout << "*** POP THAT MOFO" << std::endl;
                                     co->code.pop_back();
                                 }
                             }
@@ -476,7 +461,6 @@ class EvaCompiler {
                                 global->define(fnName);
                                 emit(OP_SET_GLOBAL);
                                 emit(global->getGlobalIndex(fnName));
-                                // TODO TESTING, WILL REMOVE
                                 emit(OP_POP);
                             } else {
                                 co->addLocal(fnName);
@@ -724,7 +708,6 @@ class EvaCompiler {
 
         bool isLambda(const Exp& exp) { return isTaggedList(exp, "lambda"); }
 
-        // TODO in the notes, but not in the  code for some reason
         bool isFunctionDeclaration(const Exp& exp) { return isTaggedList(exp, "def"); }
 
         bool isBlock(const Exp& exp) { return isTaggedList(exp, "begin"); }
