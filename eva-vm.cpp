@@ -12,23 +12,15 @@ void singleTest (bool showDisassembler, bool showStacks) {
         (var x 10)
         (def foo () x)
         (begin 
-            (var y 100) // y: cell
-            (var q 7) // q: local
-            q           // compilation error: should POP after
-            (+ y x)     // compilation error: should POP after
+            (var y 100) 
+            (var q 7) 
+            q           
+            (+ y x)     
             (begin
                 (var z 200)
-                z       // compilation error: should POP after
+                z      
                 (def bar () (+ y z))
-                (bar)))     // compilation error: should SCOPE_EXIT twice
-
-
-        (def factorial (x)
-            (if (==  x 1)
-                1
-                (* x (factorial (- x 1)))))
-
-        (factorial 5)
+                (bar)))
     )";
 
     std::cout << "Running this code: " <<std::endl << source << std::endl;
@@ -44,11 +36,11 @@ void singleTest (bool showDisassembler, bool showStacks) {
 
 int main(int argc, char const *argv[]) {
 
-    //runTheTests();
+    runTheTests();
 
-    bool showDisassembler = false;
-    bool showStacks = false;
-    singleTest(showDisassembler, showStacks);
+    // bool showDisassembler = true;
+    // bool showStacks = false;
+    // singleTest(showDisassembler, showStacks);
 
     return 0;
 };
